@@ -1,0 +1,169 @@
+# 4 Results
+
+## 4.1 Measured CPU benchmark
+
+**Table 2** reports the end-to-end CPU latency of all seven detectors measured in one shared window (single-window sequential protocol, median-of-medians, i7-14650HX at 16 intra-op threads). Measured medians span 29.6 ms (YOLO11n) to 395.5 ms (RT-DETR-x), a factor of roughly 13, at official mAP50-95 between 0.373 (YOLOv8n) and 0.548 (RT-DETR-x). Within each family, latency increases monotonically with model scale, and the LAE ranking that Section 4.3 derives from this table is the ascending-latency order: the fastest models lead even where they are not the most accurate (the most accurate model, RT-DETR-x at 0.548 mAP, is the slowest and ranks last).
+
+**Table 2.** Measured end-to-end CPU latency (one shared window, i7-14650HX, 16 intra-op threads) and the resulting LAE ranking (α = 0.5, β = 0.3, with official mAP and parameter counts as in Table 1).
+
+| Model | Family | E2E median (ms) | Within-window range (ms) | Official mAP50-95 | LAE | Rank |
+|---|---|---|---|---|---|---|
+| YOLO11n | CNN | 29.6 | 29.5–30.2 | 0.395 | 0.0542 | 1 |
+| YOLOv8n | CNN | 31.5 | 29.3–31.6 | 0.373 | 0.0469 | 2 |
+| YOLOv8s | CNN | 67.4 | 67.3–69.1 | 0.449 | 0.0265 | 3 |
+| YOLOv8m | CNN | 151.8 | 151.0–154.6 | 0.502 | 0.0153 | 4 |
+| RT-DETR-l | Transformer | 227.7 | 224.7–229.7 | 0.530 | 0.0123 | 5 |
+| YOLOv8l | CNN | 272.5 | 263.8–273.5 | 0.529 | 0.0103 | 6 |
+| RT-DETR-x | Transformer | 395.5 | 395.0–397.6 | 0.548 | 0.0078 | 7 |
+
+*E2E latency = forward pass plus Python decode + NMS for YOLO, and forward pass only for RT-DETR (which is decoding-inclusive and NMS-free). For YOLO, forward-only medians are 2.0 to 2.5 ms lower and are reported in Table S2. The two n-scale rows are ordered by their medians, and that ordering is a point estimate: under round-matched pairing over eleven interleaved rounds the YOLOv8n/YOLO11n ratio is 1.052 with a 95 % interval of [0.989, 1.181], which does not exclude parity, and the paired accuracy interval for the same pair does not exclude zero either. Of the three axes only the parameter gap between them is unambiguous.*
+
+Two pairwise observations anchor the rest of the paper. First, **the two n-scale models point the same way on all three axes, and none of the differences is resolvable**. YOLO11n is lighter (2.66 against 3.19 M parameters, 6.54 against 8.74 GFLOPs), it measures faster in every window we ran, and it is the more accurate of the two on both accuracy references (0.395 against 0.373 on the vendor column). The ordering of the two n-scale models is reported as a point-estimate ordering: neither the paired accuracy interval nor the round-matched latency-ratio interval separates them. The paired accuracy difference on the 500-image subset is +0.0093 with a 95 % interval of [−0.0038, +0.0251], whose lower bound is negative, and the round-matched latency ratio from an eleven-round interleaved run is 1.052 with a 95 % interval of [0.989, 1.181], which does not exclude parity. Across every window measured the direction is the same, with a gap of 2 ms (single-window run) to 7.5 ms (tail run). The parameter gap is the one axis that is unambiguous, and Section 4.3 therefore asserts no dominance for this pair. Second, **RT-DETR-l is the lower-cost member of an accuracy-tied pair with YOLOv8l**. Official COCO mAP50-95 is 0.530 for RT-DETR-l against 0.529 for YOLOv8l, a 0.001 gap across vendor pipelines that our own same-pipeline 500-image re-measure does not reproduce (it measured YOLOv8l marginally higher, 0.539 against 0.536, Section 3.4), so we treat the two as statistically indistinguishable in accuracy. On the cost axes the margin is unambiguous: RT-DETR-l measures 227.7 ms versus 272.5 ms in the same window, with 32.83 M parameters against 43.71 M and 105.60 GFLOPs against 165.15 G. Section 4.2 quantifies how these pairs expose the gap between theoretical and measured efficiency.
+
+**Cross-checking the accuracy column.** Because the RT-DETR-l and YOLOv8l pair above is decided by a 0.001 vendor gap, we checked the accuracy column of Table 1 rather than assuming it. All seven models were re-measured through one local pipeline on the fixed 500-image COCO subset, under the same code and the same images used for the INT8 deltas. The 95 % bootstrap intervals on those subset values are about ±0.025 wide at every model, and all seven deviations from the published values fall inside that width. Six of the seven measure above their vendor value (YOLO11n +0.010, YOLOv8n +0.023, YOLOv8s +0.020, YOLOv8m +0.006, YOLOv8l +0.010, RT-DETR-l +0.006), which is the sign a 500-image subset drawn to be easier than the full set would produce, and one inverts: RT-DETR-x measures 0.539 against its published 0.548, a −0.009 deviation that we record as a caveat on that model rather than treat as agreement. This check is the reason the pair in Section 4.1 is reported as accuracy-tied rather than as a resolved ordering: on the same pipeline the sign of the 0.001 gap reverses, and a difference that small does not survive a change of measurement.
+
+Latency on this CPU is not a stable scalar, and single-round ranges are wide: the within-window ranges of the two n-scale models overlap (29.5–30.2 ms versus 29.3–31.6 ms). The robust object of study is therefore the ranking, which we verified three ways. **Across days.** **Table 3** re-measures three representative models under the cross-round protocol on two separate days: median latencies drifted by +5 %, −5 %, and −13 %, yet the ordering was unchanged on both days, and the same three-model ordering (YOLOv8n < YOLOv8m < RT-DETR-l) appears in the single-window benchmark of Table 2.
+
+**Table 3.** Cross-day reproducibility (cross-round median protocol, ranks among the three measured models).
+
+| Model | Day 1 median (ms) | Day 1 range | Day 2 median (ms) | Day 2 range | Δ (Day 2 − Day 1) | Rank Day 1 / Day 2 |
+|---|---|---|---|---|---|---|
+| YOLOv8n | 31.7 | 30.6–32.6 | 33.4 | 32.0–33.5 | +5 % | 1 / 1 |
+| YOLOv8m | 160.0 | 157.6–166.2 | 151.9 | 151.9–153.9 | −5 % | 2 / 2 |
+| RT-DETR-l | 259.1 | 230.2–268.7 | 226.0 | 218.0–227.2 | −13 % | 3 / 3 |
+
+*RT-DETR-l shows the largest day-to-day drift (−13 %). The ordering is what reproduces.*
+
+**Across a second CPU.** A second-CPU measurement was available during development, but it is removed from the revised main evidence because it covered only four CNN models and a different runtime. All quantitative claims below are limited to the Intel i7-14650HX platform.
+
+**Latency tails for hard deadlines.** Median latency is the right summary for average-throughput deployments, but a system with a hard frame deadline must budget for the tail: to meet the deadline for almost every frame, a model needs headroom above its median. To quantify that headroom we re-ran each model in one fresh contiguous window (240 timed samples per model, the same protocol and input set as Table 2) and report per-model median, p95, p99, and maximum end-to-end latency in Table 4.
+
+**Table 4.** Latency tail statistics from a fresh single-window re-run (240 samples per model, same protocol and input images as Table 2).
+
+| Model | Median (ms) | p95 (ms) | p99 (ms) | Max (ms) |
+|---|---|---|---|---|
+| YOLO11n | 26.3 | 29.6 | 32.0 | 33.3 |
+| YOLOv8n | 33.8 | 47.1 | 61.6 | 102.1 |
+| YOLOv8s | 74.1 | 99.9 | 129.6 | 151.0 |
+| YOLOv8m | 156.0 | 203.0 | 249.5 | 434.2 |
+| RT-DETR-l | 230.4 | 252.7 | 321.1 | 478.9 |
+| YOLOv8l | 276.9 | 291.4 | 302.7 | 349.7 |
+| RT-DETR-x | 397.8 | 429.0 | 445.9 | 553.4 |
+
+*Same 8 COCO images and end-to-end timing as Table 2. The medians reproduce Table 2's ordering exactly and track its values within cross-window drift (up to about ±11 %, largest on the smallest models), which is itself a reminder that absolute milliseconds are window-specific (Section 3.3).*
+
+The tail is not uniform across models: p95 sits between 5 % (YOLOv8l) and 39 % (YOLOv8n) above the median, and p99 between 9 % (YOLOv8l) and 82 % (YOLOv8n) above it, while the maximum of every model reflects an occasional multi-frame stall. A median-based latency budget therefore does not protect a hard per-frame deadline. Following the tail-at-scale literature [3], hard real-time systems must be gated on the tail, not the average. A hard-deadline deployment should budget from the tail columns, and Section 3.7 applies the ceiling to the p99 figures when the deadline is hard.
+
+## 4.2 FLOPs overstate measured CPU latency gaps
+
+**Table 5** compares, for four detector pairs, the ratio in FLOPs, in parameters, and in measured end-to-end CPU latency (cross-round median protocol, Fig. 1). The headline case is the small-to-large YOLO pair: the FLOPs ratio of YOLOv8l to YOLOv8n is **18.9×**, whereas the measured end-to-end latency ratio is **9.4×** (10.0× forward-only), i.e. FLOPs overstate the CPU speed gap by about a factor of two. Under the single-window sequential protocol the same measured ratio is 8.7×, an overstatement of ≈ 2.2×. Section 3.3 reconciles the two protocols. The overstatement is not a YOLO artefact: within the Transformer family, RT-DETR-x over RT-DETR-l is 2.13× by FLOPs but only 1.63× by measured latency. Nor is it an artefact of the measurement protocol: the YOLOv8s/YOLOv8n pair is the one pair we have measured under all three protocols, and the measured ratio barely moves across them, at 2.27× cross-round, 2.14× single-window, and 2.15× under round-matched interleaved pairing over eleven rounds, against a FLOPs ratio of 3.27×.
+
+**Table 5.** Efficiency ratios for selected pairs (cross-round median protocol, see Fig. 1).
+
+| Pair (numerator / denominator) | FLOPs ratio | Params ratio | Latency ratio (forward) | Latency ratio (e2e) | Reading |
+|---|---|---|---|---|---|
+| YOLOv8l / YOLOv8n | 18.9 | 13.7 | 10.0 | 9.4 | FLOPs overstate e2e latency ≈ 2.0× |
+| YOLOv8s / YOLOv8n | 3.27 | 3.51 | 2.35 | 2.27 | parameter ratio exceeds FLOPs ratio |
+| RT-DETR-l / YOLOv8l | 0.64 | 0.75 | 0.88 | 0.87 | lower cost on every axis, with accuracy tied (see Section 4.1) |
+
+*Forward and end-to-end coincide for RT-DETR (no NMS, decoding inside the forward pass). The Transformer-internal pair RT-DETR-x / RT-DETR-l is quoted in the text rather than tabulated here: at 2.13× by FLOPs against 1.63× by measured latency it makes the same point as the rows above without adding a distinct kind of comparison.*
+
+We do not claim a fixed ordering among the three metrics: the parameter ratio exceeds the FLOPs ratio for the YOLOv8s/YOLOv8n pair (3.51 versus 3.27). The robust observation is directional: theoretical counts overstate measured CPU latency advantages, with no counter-example in this benchmark, and within YOLO the overstatement is larger for the widest scale gap (≈ 2.0× for YOLOv8l/n versus ≈ 1.4× for YOLOv8s/n). Consistently with this, the Transformer's measured cost per counted GFLOP is higher than the CNN's (2.45 versus 1.80 ms/G for RT-DETR-l against YOLOv8l), so per-FLOP efficiency figures cannot be read as CPU latency ratios.
+
+Measured latency nonetheless preserves the cross-family conclusion that FLOPs capture only coarsely. RT-DETR-l is cheaper than YOLOv8l on every cost axis we measure: 0.64× the FLOPs, 0.75× the parameters, and 0.87× the end-to-end latency across independent rounds (0.84× within the shared single-window run of Table 2), while the two are accuracy-tied on the official reference (Section 4.1). FLOPs distort the size of this advantage, not its direction.
+
+## 4.3 LAE: ranking, exponent robustness, and relation to single-axis metrics
+
+LAE scores with α = 0.5, β = 0.3 (Eq. 1) and the resulting ranks are the last two columns of Table 2. The default ranking is YOLO11n > YOLOv8n > YOLOv8s > YOLOv8m > RT-DETR-l > YOLOv8l > RT-DETR-x, with scores from 0.0542 down to 0.0078. This is not the raw-accuracy order (RT-DETR-x has the highest mAP yet ranks last). The index trades a small accuracy loss for a large latency saving, which is the intended behaviour for CPU deployment.
+
+**Dominance, under a rule stated in advance (Fig. 2).** The three axes are accuracy up, latency down, parameters down. Within this set the lighter model is also the faster one, so all 21 unordered pairs are candidate dominance directions on the two cost axes alone. Applying the rule of Section 3.4 to all of them, exactly one pair passes the first condition and none passes the second, so no dominance edge is asserted and all seven detectors are frontier members. We report the count rather than only the pairs that decide the figure, because a rule that is applied to the two pairs it is known to affect is not a rule.
+
+The pair that comes closest is YOLO11n over YOLOv8n. It is lighter by 0.54 M parameters and 2.2 GFLOPs, it measures faster in every window we ran, and it is more accurate on both references. It fails on resolution rather than on direction. Its paired accuracy interval on the 500-image subset, [−0.0038, +0.0251], has a negative lower bound, and its round-matched latency ratio over eleven interleaved rounds, 1.052 with a 95 % interval of [0.989, 1.181], does not exclude parity (Section 4.1). Both models are therefore drawn as frontier members, and the ordering between them is a point-estimate ordering that we state rather than assert.
+
+The RT-DETR-l and YOLOv8l pair fails earlier still. It is the only pair in the set whose two accuracy references disagree in sign, so its accuracy axis is directionally undetermined before any interval is consulted, and the 0.001 vendor gap does not carry the edge. Reporting zero asserted edges where the point estimates suggest two is the intended behaviour of the rule and the reason Fig. 2 shows no dominated marker.
+
+**Rank stability over the exponents (Fig. 3(a)).** Over the planned grid α ∈ [0.2, 0.8] × β ∈ [0.1, 0.5] (117 points), the full seven-model ranking is identical at every point, with Spearman correlation 1.0000 against the default ranking and YOLO11n first throughout. Over a wider grid α ∈ [0.05, 1.0] × β ∈ [0.05, 0.6] (240 points), 236 of 240 points (98.3 %) still reproduce the default ranking exactly. The four exceptions all sit in the degenerate corner α ≤ 0.15 ∧ β ≤ 0.1, where the cost penalties approach zero and the index collapses toward an accuracy-only metric. Even there only the most extreme point (α = 0.05, β = 0.05) changes the top-1 (to RT-DETR-l, with YOLO11n dropping to sixth), and RT-DETR-x never reaches first place on the grid. In the planned operating region, the recommended model is insensitive to the exponent choice.
+
+**Platform scope.** The revised benchmark makes no cross-platform ranking claim; the evidence is limited to the Intel i7-14650HX and ONNX Runtime 1.28.0.
+
+**Relationship to single-axis efficiency metrics (Fig. 3(b)).** The single-axis metrics mAP/GFLOPs, mAP/ms, and mAP/params all produce the same ordering as LAE on this seven-model set (rank correlation 1.0), so LAE does not earn its keep by ranking differently. Its two concrete advantages over the naive ratios are (i) joint-budget queries handled by one scalar that weighs accuracy, latency, and size at once (Section 4.5), and (ii) undistorted margins, because the latency it uses is measured rather than counted. The margins are indeed distorted under the theoretical metric: judged as mAP per GFLOP, YOLOv8l delivers 1/13.3 of YOLOv8n's per-FLOP accuracy, but judged as mAP per measured millisecond it delivers 1/6.1 (1/6.6 on the cross-round column), a ≈ 2.2× inflation of the small-to-large efficiency gap. The same effect favours the Transformer cross-family: per unit compute YOLOv8l delivers 0.64× of RT-DETR-l's efficiency (a 36 % gap read in RT-DETR-l's favour), whereas per measured millisecond it delivers 0.83×, a 17 % gap against 36 %, computed on the single-window latency column of Table 2. The cross-round column gives 0.87× and a 13 % gap. This is the quantified reason the selection protocol of Section 4.5 feeds on measured latency rather than FLOPs.
+
+## 4.4 INT8 quantization on the same CPU
+
+We report the INT8 study as a comparison against each model's FP32 baseline measured in the same run, so that the ratio and not the absolute millisecond carries the result. The four static cells come from one interleaved run in which every variant is timed once per round with the in-round order rotated. Dynamic quantization, whose cost made interleaving impractical, comes from the single-window protocol of Section 3.3, and its ratios are therefore quoted as same-window figures. The two runs place YOLOv8n's FP32 baseline at 29.8 ms and 32.3 ms respectively, an 8 % window effect of exactly the kind Section 3.3 documents, which is why every ratio in this subsection is formed within a single run. Two independent choices are varied. The **quantization recipe** affects accuracy and ranges over dynamic, naive static, and detection-head-preserving static. The **export path** changes the graph representation presented to ONNX Runtime, and ranges over its QDQ and QOperator paths (Section 3.6). Under the tested activation-type configurations, the two axes show different effects; this is toolchain-specific evidence rather than proof that format alone determines speed. All numbers are in Tables 6 to 8 and Fig. 4.
+
+**Model size.** Dynamic INT8 cuts every model to roughly a quarter of its FP32 footprint (25–28 %), and naive static does the same for the four YOLO models. Selective static, which keeps the detection head in FP32, lands between the two, at 49 %, 40 %, 37 %, and 35 % of FP32 for YOLOv8 n → s → m → l.
+
+**Table 6.** Model sizes (MB, decimal) per recipe.
+
+| Model | FP32 | Dynamic | Naive static | Selective static | Selective / FP32 |
+|---|---|---|---|---|---|
+| YOLOv8n | 12.9 | 3.5 | 3.6 | 6.3 | 49 % |
+| YOLOv8s | 44.9 | 11.5 | 11.7 | 18.1 | 40 % |
+| YOLOv8m | 103.8 | 26.3 | 26.6 | 38.1 | 37 % |
+| YOLOv8l | 175.0 | 44.2 | 44.6 | 61.5 | 35 % |
+| RT-DETR-l | 131.7 | 34.2 | – (quantization fails) | – | – |
+| RT-DETR-x | 265.8 | 68.1 | – (quantization fails) | – | – |
+
+*For RT-DETR both static recipes fail numerically at quantization time (Section 3.6), so only the dynamic recipe applies to the Transformer family.*
+
+**Accuracy.** Table 7 reports the FP32 → INT8 change in mAP50-95 on a fixed local 500-image COCO subset (same images and same code as the relative Δ of Section 3.4), arranged so that each recipe appears once under each export format. **The export format leaves accuracy where it is.** Holding the recipe fixed and changing only the format moves mAP by +0.001 to +0.005 for the naive recipe and by −0.003 to −0.001 for the head-preserving recipe, and the paired bootstrap 95 % CIs for both contrasts at both scales contain zero (B = 1000, resampling the 500 images with shared indices, Section 3.4).
+
+**The recipe does move accuracy, and how far depends on the scale.** Naive static, which leaves the detection head in INT8, loses 0.068–0.087, a consistent ≈ 17 % across the four YOLO scales, with CIs excluding zero throughout. Head-preserving static, which keeps the whole detection head in FP32, moves mAP by −0.009 to +0.001 across the four scales. At YOLOv8s and the two larger scales the paired CIs contain zero. At YOLOv8n the change is a small but resolvable loss of 0.005 (95 % CI [−0.0125, −0.0007]). The naive minus head-preserving gap is −0.064 at YOLOv8n and −0.083 at YOLOv8s, and both paired bootstrap 95 % CIs exclude zero, which is the formal demonstration that quantizing the detection head, rather than quantization itself, is the accuracy bottleneck (Section 5.2). Dynamic quantization costs 0.006 (RT-DETR-l) to 0.016 (YOLOv8n). RT-DETR static fails numerically at quantization time in this toolchain under both export formats (Section 3.6) and is reported as such, while dynamic RT-DETR is unaffected. Adding the format axis therefore settles the question the previous version of this section could not: the two effects are controlled by different choices, so a fast quantized graph and an accurate one are not in conflict.
+
+**Table 7.** FP32 → INT8 mAP50-95 change Δ on the 500-image subset, by recipe (columns) and export format (grouped).
+
+| Model | FP32 (subset) | QDQ naive | QOperator naive | QDQ head-preserving | QOperator head-preserving |
+|---|---|---|---|---|---|
+| YOLOv8n | 0.396 | −0.069 | −0.068 | −0.005 | −0.008 |
+| YOLOv8s | 0.468 | −0.085 | −0.080 | −0.002 | −0.003 |
+| YOLOv8m | 0.508 | −0.087 | – | +0.001 | – |
+| YOLOv8l | 0.539 | −0.087 | – | −0.009 | – |
+| RT-DETR-l | 0.536 | fails | fails | fails | fails |
+| RT-DETR-x | 0.539 | fails | fails | fails | fails |
+
+*QOperator was exported for YOLOv8n and YOLOv8s (dashes mark cells not run). "fails" marks static quantization that aborts or produces a degenerate model at calibration time, under both formats. Dynamic quantization is reported in the text: −0.016 (YOLOv8n), −0.011 (YOLOv8s), −0.006 (RT-DETR-l). Dynamic INT8 of YOLOv8m/l was not run under the formal accuracy protocol because its measured slowdown (> 7×) made a full measurement window cost-prohibitive, so only model sizes are reported for those cells (Table 6), and RT-DETR-x dynamic was not run because RT-DETR-l dynamic already moved mAP by only −0.006.*
+
+**Latency (Fig. 4, Table 8).** Whether a static INT8 model beats its FP32 baseline differs between the tested export paths and recipes; because activation types are not fully matched, this is a toolchain-specific observation rather than a format-only causal result. We measured all four recipe-format combinations in a single interleaved run, in which every variant is timed once per round with the in-round order rotated, and report the round-matched ratio of the FP32 baseline to the variant so that the clock drift common to a round cancels (Section 3.3). The FP32 baseline of YOLOv8n held within 1.2 % of its five-round median across the interleaved rounds, its lowest round being 29.435 ms against a median of 29.799 ms.
+
+In the QDQ format no INT8 recipe is faster than FP32. Head-preserving static runs 2.1× slower than FP32 at both scales (63.4 against 29.8 ms for YOLOv8n and 137.3 against 64.4 ms for YOLOv8s), and naive static is slower still. Dynamic quantization is slower again, by 7.8× for YOLOv8n and 9.4× for YOLOv8s when measured in the single-window protocol of Section 3.3, which was used for it because its cost made the interleaved run impractical. Dynamic is accordingly absent from Fig. 4c, whose bars are all round-matched.
+
+In the QOperator format the same two recipes are faster than FP32, and the size of that difference is the point (Fig. 4c plots all four cells of this run against parity and prints each cell's accuracy cost inside its bar). For YOLOv8n, naive static reaches 18.5 ms against 29.8 ms for FP32, a round-matched ratio of 1.61× that held in all five rounds (1.58 to 1.61×), and head-preserving static reaches 26.6 ms at 1.11× (1.10 to 1.30×). YOLOv8s reproduces the pattern at 1.92× (1.69 to 1.96×) and 1.37× (1.08 to 1.48×), and the executed-graph counts are identical across the two scales. Identical weights, identical arithmetic, and an accuracy difference the paired tests of Table 7 cannot resolve therefore differ by a factor of about four in latency, entirely through the export format. This is the cleanest causal contrast in this paper.
+
+The 1.61× cell is a mechanism demonstration rather than a recipe to deploy. Naive static gives up 0.068 of mAP in either format (Table 7), which no accuracy budget of Section 4.5 would accept. The configuration that is both executable and accurate is QOperator export with the detection head preserved, at 1.11× to 1.37× faster than FP32 for a mAP change of −0.008 (YOLOv8n) and −0.003 (YOLOv8s). That cell is the deployable result of this section.
+
+QOperator is not portable. OpenVINO's ONNX frontend rejects these artifacts, because ONNX Runtime emits the fused activation operators in the com.microsoft domain with dynamic element types. To separate the runtime effect from the format effect we loaded the portable QDQ models in OpenVINO 2026.3.1 into the same interleaved run as the ONNX Runtime cells, at one thread setting (16 intra-op threads for ONNX Runtime, the matching setting for OpenVINO), the same warm-up, and the same repetition count, so that every cross-runtime comparison is formed within a round. Only that one thread setting was run, and no thread sweep of OpenVINO is reported. Three round-matched comparisons come out of the run. First, OpenVINO's own FP32 baseline is the slower of the two FP32 baselines: ONNX Runtime ran it in 0.41× to 0.88× the time, a median ratio of 0.72×, below parity in all five rounds. Second, on the portable QDQ graphs OpenVINO is faster than its own FP32 baseline, with the naive cell above parity in all five rounds at 1.13× to 2.22× and the head-preserving cell above parity in four of the five, its weakest round at 0.99×. Third, on the same file OpenVINO ran the QDQ INT8 model 2.24× to 2.83× faster than ONNX Runtime did, which is the sense in which the cross-runtime advantage is at least 2.2×. Because latency under OpenVINO varies far more on this machine than under ONNX Runtime, a cell's worst round deviating from its own five-round median by 12.6 % to 60 % against 1.6 % to 11 % for the ONNX Runtime cells of the same run, we use these figures to establish a direction and a conservative bound rather than a speed-up. The direction is what the comparison was built to isolate: identical integer weights in one portable format run slower than FP32 under one runtime and faster than FP32 under another, and the runtime whose FP32 baseline is slower is the one whose INT8 wins. That places the INT8 slowdown of the QDQ column in one runtime's kernel selection rather than in the integer arithmetic or in the CPU. All latency numbers in this subsection are for ONNX Runtime 1.28.0 with its CPU execution provider on the CPU of Section 3.1, and are toolchain-specific (Section 3.6).
+
+**Table 8.** Round-matched latency ratio (FP32 ÷ recipe, above 1 means faster) and executed-graph fusion, by recipe and export format.
+
+| | QDQ naive | QOperator naive | QDQ head-preserving | QOperator head-preserving |
+|---|---|---|---|---|
+| Portable to other runtimes | yes | no | yes | no |
+| YOLOv8n | 0.42× · 7/64 | **1.61× · 64/64** | 0.47× · 0/64 | **1.11× · 45/64** |
+| YOLOv8s | 0.44× · 7/64 | **1.92× · 64/64** | 0.47× · 0/64 | **1.37× · 45/64** |
+
+*Each cell gives the median round-matched ratio over five rounds, then the number of convolutions that executed as an integer QLinearConv out of 64. Every QOperator cell held above 1 and every QDQ cell below 1 in all five rounds. "Portable" means the artifact loads in an unrelated runtime. OpenVINO rejects the QOperator exports (Section 3.6), which is what limits the fast column to ONNX Runtime. Every latency ratio is measured at both scales, and every fusion count is probed at the scale it is reported for (Table S3).*
+
+**Kernels actually executed.** A quantized ONNX graph can run integer kernels or fall back to FP32 kernels wrapped by conversion nodes, so we inspected the execution graph ONNX Runtime actually runs. We rebuilt each session under the settings used for the latency measurements (16 intra-op threads, full graph optimization), asked the runtime to dump its fully optimized model, and counted node types. Three distinct executed-graph profiles emerge, and the recipe ordering of Section 5.2 is read against them: FP32 convolutions padded by conversion nodes (static), fully integer convolutions with per-call activation quantization (dynamic), and the plain FP32 baseline. The static QDQ graphs are the first profile, with every convolution still on an FP32 kernel, except the naive variant, which fuses 7 of YOLOv8n's 64 convolutions into QLinearConv and leaves the other 57 on FP32 Conv. The dynamic graphs are the second and contain no FP32 compute kernel at all. In the QOperator format the fusion completes: at the naive recipe all 64 convolutions execute as QLinearConv with 10 conversion nodes left in the graph, at both scales probed, and the head-preserving variant fuses 45 of 64 at both scales, again with 7 conversion nodes at both (Table 8). Table S3 reports the full node census.
+
+**Why the QDQ graph does not fuse.** The mechanism is visible both in the exported graph and in the quantizer's operator registry. PyTorch exports the SiLU activation of these detectors as a Sigmoid followed by a Mul, and in ONNX Runtime 1.28.0 neither operator carries a QDQ quantizer. The QDQ registry in the onnxruntime.quantization module lists 25 operators, among them Relu, Clip, Reshape, MaxPool and Split, and it does not list Sigmoid, Mul, Add, Concat or Softmax. The QOperator registry does list those five, which is what allows the QOperator format to fuse them. A quantized convolution therefore closes on both sides only when the operators next to it have registered quantizers, and in the naive QDQ graph the seven convolutions that do fuse are exactly those whose output feeds a Reshape, the one consumer in that chain that does have a registered quantizer.
+
+We tested that account as a prediction rather than leaving it as an explanation. In a controlled pair of networks with identical topology, in which the only difference is the activation function, QDQ fusion moves from 4 of 5 convolutions for the ReLU version to 1 of 5 for the SiLU version, so the activation does cause the failure rather than merely accompanying it. The same rule predicts 7 of 64 fusing convolutions for YOLOv8n and 7 of 64 for YOLOv8s, matching the measured counts exactly. It is not a complete predictor of fusion rate across architectures. ResNet-18, which contains no SiLU at all, fuses only 1 of 20 convolutions because its residual additions hit the same missing-registry condition, and EfficientNet-B0 fuses 27 of 81 despite being SiLU throughout, against predictions of 9 of 20 and 2 of 81. We report the four cases in the supplementary table and state the rule as directional rather than closed-form. What it does establish is that the 7 of 64 is a property of the operator registry and the exported graph, and not an unexplained measurement.
+
+## 4.5 Worked selection look-ups
+
+**Table 9** applies the four-step protocol of Section 3.7 to representative budgets. Each non-empty row is read as: budget in the first column, feasible set in the second (official mAP plus measured single-window latency plus parameters all satisfying the bounds), and the feasible detector selected by the declared application priority in the third. The final row shows the empty-set case, which triggers step 4 (relax the tightest bound and retry, and the suggested relaxations point back to earlier rows).
+
+**Table 9.** Worked examples of the selection look-up protocol (latency column = Table 2, single-window, i7-14650HX).
+
+| Budget | Feasible set | Recommended | Why |
+|---|---|---|---|
+| mAP ≥ 0.37, ≤ 40 ms | YOLO11n, YOLOv8n | YOLO11n | Highest LAE in the feasible set |
+| mAP ≥ 0.50, no latency cap | YOLOv8m, YOLOv8l, RT-DETR-l, RT-DETR-x | YOLOv8m | Highest LAE, since its ≈ 76 ms speed advantage over RT-DETR-l outweighs RT-DETR-l's marginal mAP gain |
+| params ≤ 35 M, mAP ≥ 0.45 | YOLOv8m, RT-DETR-l | YOLOv8m | Both fit the parameter cap, and LAE prefers the faster YOLOv8m (25.9 M, 151.8 ms) |
+| mAP ≥ 0.50, ≤ 120 ms, params ≤ 30 M | ∅ | – | Infeasible, so step 4 relaxes the tightest bound, e.g. the latency ceiling to ≤ 200 ms, then retries |
+
+*The recommendation follows the declared application priority within the feasible set; LAE is descriptive only. In the first row both n-scale models are feasible, and the recommendation follows the ranking of Table 2 rather than any dominance relation between them. The four rows exercise the filter, the ranking within a multi-member feasible set, the optional parameter ceiling, and the empty-set branch of step 4. Further rows add no step that these four do not already exercise, because the recommendation follows the declared application priority within the feasible set.*
+
+The table is only valid on the platform and precision reference it was built from: the latency column is the single-window i7-14650HX measurement of Table 2, and the accuracy column is official COCO val2017 mAP. Changing CPU, input resolution, or GPU deployment requires re-measuring the latency column before the table is used. The four-step procedure itself is unchanged. LAE sensitivity is reported separately and is not used to claim a superior selector. The role and the limits of the index are discussed in Sections 4.3 and 5.3.
+

@@ -1,0 +1,24 @@
+# Large/private data and model artifacts
+data/
+kaggle/
+agri-trace/
+*.pt
+*.onnx
+*.engine
+*.bin
+
+# Local measurements and generated outputs (upload curated CSVs separately)
+results/
+logs_export.txt
+
+# Installers and local caches
+*.msi
+*.zip
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Office/PDF exports are maintained for submission, not required for code release
+paper/submission/*.docx
+paper/submission/*.pdf

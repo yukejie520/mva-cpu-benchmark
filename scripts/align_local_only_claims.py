@@ -1,0 +1,22 @@
+from pathlib import Path
+root = Path(__file__).resolve().parents[1]
+files = [root/"paper/manuscript/1_introduction.md", root/"paper/manuscript/3_methods.md", root/"paper/manuscript/4_results.md", root/"paper/manuscript/5_discussion.md", root/"paper/manuscript/figures.md", root/"README.md"]
+repls = {
+    "and for the four CNN models also on a second CPU at a different runtime version.": "; no second-CPU experiment is used in the revised claims.",
+    "We repeated forward-latency measurement on an unrelated pure-CPU platform (a shared 8-core ModelScope cloud CPU running ONNX Runtime 1.23.2, versus 1.28.0 locally). For the four CNN models spanning scale (YOLO11n, YOLOv8n/m/l), both the forward-latency ordering and the LAE descending ordering reproduced exactly. We treat this as rank-only evidence: absolute cloud timings reflect a shared multi-tenant CPU and a different ORT version and are not pooled with the numbers above.": "A second-CPU measurement was available during development, but it is removed from the revised main evidence because it covered only four CNN models and a different runtime. All quantitative claims below are limited to the Intel i7-14650HX platform.",
+    "**Across a second CPU.** We repeated forward-latency measurement on an unrelated pure-CPU platform (a shared 8-core ModelScope cloud CPU running ONNX Runtime 1.23.2, versus 1.28.0 locally). For the four CNN models spanning scale (YOLO11n, YOLOv8n/m/l), both the forward-latency ordering and the LAE descending ordering reproduced exactly. We treat this as rank-only evidence: absolute cloud timings reflect a shared multi-tenant CPU and a different ORT version and are not pooled with the numbers above.": "**Cross-platform scope.** No second-CPU result is used as primary evidence in this revision; the benchmark is intentionally limited to the Intel i7-14650HX platform.",
+    "The export format rather than the quantization recipe": "The tested export paths rather than the quantization recipe",
+    "the export format rather than the integer arithmetic decides speed": "the tested export paths show different runtime behavior, with activation-type confounding disclosed",
+    "the export format rather than the integer arithmetic decides whether INT8 is faster here": "the tested export paths show different INT8 behavior here",
+    "the feasible detector with the highest LAE score": "the feasible detector selected by the declared application priority",
+    "The recommended model is always the feasible-set member with the highest LAE.": "The recommendation follows the declared application priority within the feasible set; LAE is descriptive only.",
+    "Because the ranking that drives step 3 is exponent-robust (Section 4.3), \"recommend the highest LAE\" does not depend on a lucky choice of α and β.": "LAE sensitivity is reported separately and is not used to claim a superior selector.",
+    "**Robustness across a second CPU.** As reported in Section 4.1, the LAE descending order of the four CNN models reproduces on a different CPU and ORT version, giving the ranking a platform component in addition to the day and window evidence above.": "**Platform scope.** The revised benchmark makes no cross-platform ranking claim; the evidence is limited to the Intel i7-14650HX and ONNX Runtime 1.28.0.",
+    "Across platforms, only the ranking is portable, and we verified ranking portability only for the four CNN models on one second CPU. The Transformer models were not re-measured there.": "No portability claim is made across platforms; Transformer models were not measured on a second CPU.",
+    "The 21 pairs share models and are therefore not independent, which is why the interval quoted is a cluster bootstrap over the seven models rather than a pair-level bootstrap.": "The 21 pairs share models and are therefore not independent; this is a descriptive trend on one platform, not a universal scaling law.",
+    "**Data availability.** Every measurement artefact behind this paper is archived as a machine-readable file and is available from the corresponding author on reasonable request:": "**Data availability.** The measurement artefacts are being prepared for public release in a versioned GitHub repository and Zenodo archive; until the DOI is assigned, the current package remains a pre-submission archive. The files include:",
+}
+for f in files:
+    s=f.read_text(encoding="utf-8")
+    for a,b in repls.items(): s=s.replace(a,b)
+    f.write_text(s,encoding="utf-8")
