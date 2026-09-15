@@ -1,5 +1,7 @@
 # ccf-c-detector-efficiency — 通用检测器边缘效率基准 + 选型指标
 
+> **Public reproducibility archive (v0.1.0 pre-release).** DOI: [10.5281/zenodo.22752645](https://doi.org/10.5281/zenodo.22752645). This release archives the benchmark scripts, manuscript source, figures, and environment specification. It does **not** claim that the five-round seven-model benchmark or full COCO val2017 evaluation has been completed; those results will be added in a later release.
+
 > **第二篇论文项目**（SCI 期刊线，CCF-C 类；主投 **Machine Vision and Applications**，内部目标投出 ~2026-11 中）。
 > 与已投 SIViP 的 SCI 项目 `d:\Article\neu-det-project` **完全隔离**——本目录独立，**绝不动** SCI 的任何文件（SCI 可能还要修补）。
 
