@@ -109,7 +109,7 @@ class _Subset:
 
 def run(args) -> dict:
     subset = _Subset(args.anns)
-    sess = build_session(args.onnx)
+    sess = build_session(args.onnx, threads=args.threads)
     ev = COCOEval()
     t0 = time.perf_counter()
     n_imgs = len(subset.images) if not args.n else min(args.n, len(subset.images))
@@ -147,6 +147,7 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=0, help="只评前 n 图（调试/冒烟）")
     ap.add_argument("--conf", type=float, default=0.001)
     ap.add_argument("--iou", type=float, default=0.7)
+    ap.add_argument("--threads", type=int, default=16)
     args = ap.parse_args()
 
     res = run(args)

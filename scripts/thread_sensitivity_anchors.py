@@ -9,11 +9,12 @@ def main():
     ap.add_argument("--out",default=str(ROOT/"results/thread_sensitivity.csv")); a=ap.parse_args()
     out=Path(a.out); out.parent.mkdir(parents=True,exist_ok=True); rows=[]
     for t in (1,4,8,16):
-        raw=out.with_name(f"_thread_{t}.csv")
-        cmd=[sys.executable,str(ROOT/"scripts/measure.py"),"--imgs",a.imgs,"--n-imgs",str(a.n_imgs),"--warmup",str(a.warmup),"--reps",str(a.reps),"--threads",str(t),"--models",ANCHORS,"--out",str(raw)]
-        subprocess.run(cmd,check=True)
-        with raw.open(encoding="utf-8") as f:
-            for row in csv.DictReader(f): row["threads"]=t; rows.append(row)
+        for r in range(1, a.rounds + 1):
+            raw=out.with_name(f"_thread_{t}_round_{r}.csv")
+            cmd=[sys.executable,str(ROOT/"scripts/measure.py"),"--imgs",a.imgs,"--n-imgs",str(a.n_imgs),"--warmup",str(a.warmup),"--reps",str(a.reps),"--threads",str(t),"--models",ANCHORS,"--out",str(raw)]
+            subprocess.run(cmd,check=True)
+            with raw.open(encoding="utf-8") as f:
+                for row in csv.DictReader(f): row["threads"]=t; row["round"]=r; rows.append(row)
     with out.open("w",newline="",encoding="utf-8") as f:
         w=csv.DictWriter(f,fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
     print(out)

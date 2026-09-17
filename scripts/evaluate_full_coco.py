@@ -13,7 +13,7 @@ def main():
         model=ROOT/"data"/FILES[name]
         if not model.exists(): raise FileNotFoundError(model)
         kind="yolo" if name.startswith("YOLO") else "rtdetr"
-        cmd=[sys.executable,str(ROOT/"scripts/eval_map.py"),"--onnx",str(model),"--name",name,"--kind",kind,"--img-root",str(img),"--anns",str(ann),"--out",str(a.out)]
+        cmd=[sys.executable,str(ROOT/"scripts/eval_map.py"),"--onnx",str(model),"--name",name,"--kind",kind,"--img-root",str(img),"--anns",str(ann),"--out",str(a.out),"--threads",str(a.threads)]
         subprocess.run(cmd,check=True)
     print(a.out)
 if __name__=="__main__": main()
