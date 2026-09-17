@@ -1,0 +1,139 @@
+{
+  "protocol": "five-round interleaved FP32 main benchmark",
+  "platform": "Intel Core i7-14650HX / Windows 11",
+  "threads": 16,
+  "imgsz": 640,
+  "warmup": 20,
+  "reps": 30,
+  "n_imgs": 8,
+  "images": [
+    "000000000009.jpg",
+    "000000000025.jpg",
+    "000000000030.jpg",
+    "000000000034.jpg",
+    "000000000036.jpg",
+    "000000000042.jpg",
+    "000000000049.jpg",
+    "000000000061.jpg"
+  ],
+  "round_orders": [
+    {
+      "round": 1,
+      "order": [
+        "YOLO11n",
+        "YOLOv8n",
+        "YOLOv8s",
+        "YOLOv8m",
+        "YOLOv8l",
+        "RT-DETR-l",
+        "RT-DETR-x"
+      ],
+      "started_utc": "2026-09-16T14:42:07+08:00",
+      "finished_utc": "2026-09-16T14:48:30+08:00"
+    },
+    {
+      "round": 2,
+      "order": [
+        "YOLOv8n",
+        "YOLOv8s",
+        "YOLOv8m",
+        "YOLOv8l",
+        "RT-DETR-l",
+        "RT-DETR-x",
+        "YOLO11n"
+      ],
+      "started_utc": "2026-09-16T14:48:30+08:00",
+      "finished_utc": "2026-09-16T14:54:51+08:00"
+    },
+    {
+      "round": 3,
+      "order": [
+        "YOLOv8s",
+        "YOLOv8m",
+        "YOLOv8l",
+        "RT-DETR-l",
+        "RT-DETR-x",
+        "YOLO11n",
+        "YOLOv8n"
+      ],
+      "started_utc": "2026-09-16T14:54:51+08:00",
+      "finished_utc": "2026-09-16T15:01:02+08:00"
+    },
+    {
+      "round": 4,
+      "order": [
+        "YOLOv8m",
+        "YOLOv8l",
+        "RT-DETR-l",
+        "RT-DETR-x",
+        "YOLO11n",
+        "YOLOv8n",
+        "YOLOv8s"
+      ],
+      "started_utc": "2026-09-16T15:01:02+08:00",
+      "finished_utc": "2026-09-16T15:07:32+08:00"
+    },
+    {
+      "round": 5,
+      "order": [
+        "YOLOv8l",
+        "RT-DETR-l",
+        "RT-DETR-x",
+        "YOLO11n",
+        "YOLOv8n",
+        "YOLOv8s",
+        "YOLOv8m"
+      ],
+      "started_utc": "2026-09-16T15:07:32+08:00",
+      "finished_utc": "2026-09-16T15:13:29+08:00"
+    }
+  ],
+  "models": [
+    {
+      "name": "YOLO11n",
+      "family": "CNN",
+      "file": "yolo11n.onnx",
+      "kind": "yolo"
+    },
+    {
+      "name": "YOLOv8n",
+      "family": "CNN",
+      "file": "yolov8n.onnx",
+      "kind": "yolo"
+    },
+    {
+      "name": "YOLOv8s",
+      "family": "CNN",
+      "file": "yolov8s.onnx",
+      "kind": "yolo"
+    },
+    {
+      "name": "YOLOv8m",
+      "family": "CNN",
+      "file": "yolov8m.onnx",
+      "kind": "yolo"
+    },
+    {
+      "name": "YOLOv8l",
+      "family": "CNN",
+      "file": "yolov8l.onnx",
+      "kind": "yolo"
+    },
+    {
+      "name": "RT-DETR-l",
+      "family": "Transformer",
+      "file": "rtdetr-l.onnx",
+      "kind": "rtdetr"
+    },
+    {
+      "name": "RT-DETR-x",
+      "family": "Transformer",
+      "file": "rtdetr-x.onnx",
+      "kind": "rtdetr"
+    }
+  ],
+  "started_utc": "2026-09-16T14:42:07+08:00",
+  "finished_utc": "2026-09-16T15:13:29+08:00",
+  "raw_out": "main7_interleaved_raw.csv",
+  "summary_out": "main7_interleaved_summary.csv"
+}

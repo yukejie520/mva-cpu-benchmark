@@ -1,0 +1,7 @@
+Python: 3.12.14
+OS: Windows 11 (10.0.26200)
+CPU: Intel Core i7-14650HX
+Runtime: ONNX Runtime 1.28.0, CPUExecutionProvider
+Threads: 16 intra-op threads for the main benchmark
+Input: 640 px, 20 warm-up iterations, 8 images, 30 timed repetitions per image
+Key packages: numpy 2.5.3; pandas 3.0.1; opencv-python-headless 5.0.0.93; matplotlib 3.11.2
