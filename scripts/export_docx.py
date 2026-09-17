@@ -223,8 +223,12 @@ def norm_words(text: str) -> Counter:
         代价可接受：那只是排版差异，不会让读者读到一个错词或有歧义的句子。
         本文真正踩到的是"反斜杠带走了整个词"，那个方向会被 source_only 抓到。
     """
-    s = re.sub(r"<[^>]+>", " ", text)
-    s = s.replace("–", "--").replace("\\", "")
+    # Markdown image links are not reader-visible text.  Removing them before
+    # the round-trip comparison prevents digits in Fig1.png and Pandoc's
+    # media/rId attributes from creating false mismatches.
+    s = re.sub(r"!\[([^\]]*)\]\([^)]*\)(?:\{[^}]*\})?", r"\1", text)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = s.replace("–", "--").replace("—", "--").replace("\\", "")
     s = _RT_DROP.sub(" ", s)
     out: Counter = Counter()
     for w in re.sub(r"\s+", " ", s).split():
@@ -249,6 +253,8 @@ def roundtrip_diff(docx: Path, md_text: str) -> tuple[list[str], list[str]]:
 
 def numbers(text: str) -> Counter:
     """数字串多重集。传入前**必须**先剔除 md 的行首列表编号（用 strip_list_marks）。"""
+    # Image resource names (e.g. Fig1.png) are not visible document content.
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)(?:\{[^}]*\})?", r"\1", text)
     return Counter(_NUM.findall(text))
 
 
@@ -279,7 +285,7 @@ SI_H1 = ["Supplementary Material"]
 SI_H2 = ["Table S1", "Table S2", "Table S3"]
 
 # 表格列数（§7.15 探针逐张核过）：结构项，数值本身由③的数字串多重集覆盖
-BODY_TABLE_COLS = [5, 7, 7, 5, 6, 6, 6, 5, 4]
+BODY_TABLE_COLS = [5, 8, 7, 5, 6, 6, 6, 5, 4]
 SI_TABLE_COLS = [7, 6, 6]
 
 # 声明段：MVA 投稿系统逐项要问，正文缺一不可；SI 里不该出现

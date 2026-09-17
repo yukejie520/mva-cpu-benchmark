@@ -1,6 +1,6 @@
 # ccf-c-detector-efficiency — 通用检测器边缘效率基准 + 选型指标
 
-> **Public reproducibility archive (v0.1.0 pre-release).** DOI: [10.5281/zenodo.22752645](https://doi.org/10.5281/zenodo.22752645). This release archives the benchmark scripts, manuscript source, figures, and environment specification. It does **not** claim that the five-round seven-model benchmark or full COCO val2017 evaluation has been completed; those results will be added in a later release.
+> **Public reproducibility archive (v0.1.0 pre-release).** DOI: [10.5281/zenodo.22752645](https://doi.org/10.5281/zenodo.22752645). This release archives the benchmark scripts, manuscript source, figures, and environment specification. The five-round seven-model latency rerun is now complete locally; the public archive does not yet include the generated CSVs or the complete COCO val2017 accuracy rerun, which will be added in the next release.
 
 > **第二篇论文项目**（SCI 期刊线，CCF-C 类；主投 **Machine Vision and Applications**，内部目标投出 ~2026-11 中）。
 > 与已投 SIViP 的 SCI 项目 `d:\Article\neu-det-project` **完全隔离**——本目录独立，**绝不动** SCI 的任何文件（SCI 可能还要修补）。
@@ -9,12 +9,12 @@
 
 ## 一、这篇论文做什么（一句话）
 
-在**同一个 CPU 台架**上系统测量 YOLO(CNN) 和 RT-DETR(Transformer) 两族检测器的真实延迟/参数量/FLOPs/体积/INT8 量化表现，提出一个**"实测延迟校正"的选型指标 LAE**，帮你在给定精度和速度要求下选最划算的检测器。
+在**同一个 CPU 台架**上系统测量 YOLO(CNN) 和 RT-DETR(Transformer) 两族检测器的真实延迟/参数量/FLOPs/体积/INT8 量化表现，并把 LAE 保留为一个**描述性**的联合预算查表指标；核心证据是可复现的 CPU 测量协议、FLOPs 与真实延迟的偏差，以及 INT8 导出图与实际执行内核的关系。
 
 ## 二、为什么能中（核心卖点）
 
 1. **空白**：现有效率基准几乎全在 GPU(T4) 上测、或只测 YOLO 一族；"YOLO + RT-DETR 同一 CPU 台架的效率分级"没人做过。
-2. **不是纯测速报告**：提出新指标 LAE = mAP / (Latency_ms^0.5 × Params^0.3)，指数固定、用敏感性分析证明排名稳健——这是方法论贡献。
+2. **不是纯测速报告**：量化 FLOPs 与真实 CPU 延迟的偏差，并检查 INT8 导出图、算子融合和运行时行为；LAE 只作透明的描述性分析，不包装成已验证的新方法。
 3. **测量公平性**：RT-DETR 免 NMS、YOLO 带 NMS，对比有偏差——我们修正它。
 
 ## 三、目录结构（每个文件夹干什么）
@@ -36,9 +36,9 @@ ccf-c-detector-efficiency/
 | 项 | 决定 |
 |---|---|
 | 数据集 | COCO val（只测前向延迟/精度，**不训练**） |
-| 模型 | YOLOv8 n/s/m/l（CNN）+ **RT-DETR l/x（Transformer，Ultralytics 官方，同库同源，2026-09-05 拍板）** |
+| 模型 | YOLO11n、YOLOv8 n/s/m/l（CNN）+ **RT-DETR l/x（Transformer，Ultralytics 官方，同库同源）** |
 | 测量 | CPU 实测延迟 / 参数量 / FLOPs / 体积 / INT8 量化 |
-| 指标 | LAE = mAP / (Latency^0.5 × Params^0.3) + 敏感性分析 |
+| 指标 | 实测端到端延迟、FLOPs/延迟比、INT8 执行图；LAE 仅作描述性敏感性分析 |
 | 产出 | 4 张图 + 选型协议（决策树/查表） |
 
 ## 五、台架纪律（已拍板 2026-09-04）
@@ -61,7 +61,7 @@ ccf-c-detector-efficiency/
 - [x] W3a RT-DETR GFLOPs 校准 92.54→105.60（运行时计数，transB 修复，skip=0）
 - [x] W3b 导出全 6 模型 ONNX（yolov8n/s/m/l + rtdetr-l/x）
 - [x] W3c 全 6 模型正式 measure → 账本 §1/§2（发现窗口漂移）
-- [x] W4a 决策：延迟硬化协议=**多轮中位数之中位数**（已跑 3 轮入账本 §2 正式值）；mAP 源=**官方模型卡**（已核入账本）
+- [x] W4a 决策：延迟硬化协议=**五轮交错中位数之中位数**（旋转模型顺序，已生成 raw/summary/metadata）；mAP 源暂为**官方模型卡**，完整 COCO 重评估仍待完成
 - [x] W4b INT8 量化收官（账本 §3 + notes/05）：三配方（dynamic/naive static/selective）+ 两发现
   （①输出 Concat 混装→mAP≈0；②RT-DETR static 崩溃=跨族观察）；体积 / 同窗口延迟Δ /
   500 子集 mAPΔ 齐备（static ×2、dynamic 7.8-9.4×、selective 精度 ±0.009 无损）
@@ -74,7 +74,7 @@ ccf-c-detector-efficiency/
   第一"（(0.05,0.05) 单点 top-1=RT-DETR-l），账本/notes/06 已改准；P4 图改题已拍板（notes/06）
 - [x] W5 图 P1-P3 已生成（账本 §6 + notes/07 图注；300dpi PNG+PDF 在 results/figures/）；v2 按用户目检反馈重画（P1 拆三面板/P2 图例高亮/P3 逐点标真值）；**v3 按第二轮审图意见处理**（P1 "Ratio (A / B)" 口径+延迟 whisker、P2 log 轴+点旁参数量(用户拍板)、P3 y 限余量/ORT v1.28.0 工具链措辞/FP32 绝对基线脚注）；**v4 按第三轮用户反馈处理（仅 P1）**：族配色+高亮第 4 根跨族柱（用户拍板）、删 ratio=1 旁注改 (a) 图例、图注精简、(c) 标题带台架、柱顶数值加粗上移、x 轴单行全名（测试 9/9 已清理）；v4.1 修图注水平截断（手动断 8 短行+画布加高，测试 4/4 已清理；notes/07 记 v4/v4.1 改动）；**v4.2 修 P2/P3 图注同款截断+贴边**（P2 画布 7.0×5.1/bottom 0.28/5 短行、P3 7.8×4.3/bottom 0.32/6 短行，测试 13/13 已清理；notes/07 记 v4.2）；**P4 v5 双面板新增**（秩稳健热图 + 余量失真，用户拍板改题；热图网格代码内现算=账本 §5.1 同源、图注 f-string 现算，测试 12/12 已清理；notes/07 记 v5）；**v5.1 按用户反馈改 P4 (b)**（parity=1 虚线由细灰改为深色 lw1.3 置顶并纳入图例、图例改语义标签 Theoretical/Measured CPU 并移右上空白角、图注点破 magenta=理论效率/blue=实测 CPU 效率色码，测试 6/6 已清理；notes/07 记 v5.1）；P1-P4 全 4 图 300dpi PNG+PDF 在 results/figures/
 - [x] **Y 挡达成（2026-09-07）**：Kaggle 注册受 Google reCAPTCHA 阻拦 → 改用 **ModelScope 魔搭免费纯 CPU**（8 核、无 GPU；notebook 双平台通用 + 修 IMG NameError，测试 7/7 已清理）；该云端结果仅保留为开发记录；修订稿不将其作为跨平台证据（`results/kaggle_fwd.csv` 存档）
-- [ ] W5-6 选型协议已落稿（查表+4 步规则，用户拍板；notes/08 + 账本 §5.4）+ **图 P1-P4 待用户目检定稿**
+- [x] W5-6 选型协议已落稿（查表+4 步规则；LAE 降为描述性分析）；图 P1-P4 已生成，最终投稿版仍需同步五轮数据
 - [ ] W6-7 写作 + 5 席自评
 - [ ] W8 投 MVA 期刊（内部目标 ~2026-11 中）
 
