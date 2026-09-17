@@ -395,7 +395,7 @@ def plot_p2(canon_csv: str | Path, out: Path) -> Path:
     # "图画错了"。第三轴由标记面积承载，图注写明交集为全集。
     # 标注偏移字典（points，文本中心相对数据点）：log-x 下逐点手摆防文字压点/互叠
     off = {"YOLO11n": (0, 22), "YOLOv8n": (10, -16), "YOLOv8s": (8, -16),
-           "YOLOv8m": (10, 8), "RT-DETR-l": (0, -18),
+           "YOLOv8m": (-28, 22), "RT-DETR-l": (30, -24),
            "YOLOv8l": (-8, 16), "RT-DETR-x": (0, 18)}
     fig, ax = plt.subplots(figsize=(7.0, 5.1))
     for r in rows:
