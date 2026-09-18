@@ -1,6 +1,6 @@
 # ccf-c-detector-efficiency — 通用检测器边缘效率基准 + 选型指标
 
-> **Public reproducibility archive (v0.1.0 pre-release).** DOI: [10.5281/zenodo.22752645](https://doi.org/10.5281/zenodo.22752645). The GitHub main branch now also contains the curated `release_data/` package with the five-round latency CSVs, thread-sensitivity CSV, relative-path metadata, model hashes, and environment summary. The Zenodo record predates that package and will be updated after the complete COCO val2017 accuracy rerun.
+> **Public reproducibility archive (v0.1.0 pre-release).** DOI: [10.5281/zenodo.22752645](https://doi.org/10.5281/zenodo.22752645). The curated `release_data/` package is being refreshed locally with the verified five-round latency CSVs, thread-sensitivity CSV, standard COCOeval table, path-sanitized metadata, model hashes, and environment summary. The Zenodo record predates this refresh and should be superseded by a versioned release before submission.
 
 > **第二篇论文项目**（SCI 期刊线，CCF-C 类；主投 **Machine Vision and Applications**，内部目标投出 ~2026-11 中）。
 > 与已投 SIViP 的 SCI 项目 `d:\Article\neu-det-project` **完全隔离**——本目录独立，**绝不动** SCI 的任何文件（SCI 可能还要修补）。
@@ -62,13 +62,14 @@ ccf-c-detector-efficiency/
 - [x] W3a RT-DETR GFLOPs 校准 92.54→105.60（运行时计数，transB 修复，skip=0）
 - [x] W3b 导出全 6 模型 ONNX（yolov8n/s/m/l + rtdetr-l/x）
 - [x] W3c 全 6 模型正式 measure → 账本 §1/§2（发现窗口漂移）
-- [x] W4a 决策：延迟硬化协议=**五轮交错中位数之中位数**（旋转模型顺序，已生成 raw/summary/metadata）；mAP 源暂为**官方模型卡**，完整 COCO 重评估仍待完成
+- [x] W4a 决策：延迟硬化协议=**五轮交错中位数之中位数**（旋转模型顺序，已生成 raw/summary/metadata）；完整 COCO val2017 已用标准 `pycocotools` COCOeval 统一重评估，结果进入 `results/full_coco_map_official.csv` 和 `release_data/full_coco_map.csv`
 - [x] W4b INT8 量化收官（账本 §3 + notes/05）：三配方（dynamic/naive static/selective）+ 两发现
   （①输出 Concat 混装→mAP≈0；②RT-DETR static 崩溃=跨族观察）；体积 / 同窗口延迟Δ /
   500 子集 mAPΔ 齐备（static ×2、dynamic 7.8-9.4×、selective 精度 ±0.009 无损）
 - [x] W4b.5 收尾：README 同步（本表）+ 频率数据入账（修正① 措辞待写作时用户定，见账本 §3 频率行）
 - [x] 修正① 开发阶段稳健性记录：YOLOv8n/m + RT-DETR-l 隔日 3 轮 **Rank(Day1 vs Day2) 完全一致**（+5%/−5%/−13% 漂移但秩不变）→ 已入账本 §2；该记录不替代新版七模型交错重测
-- [x] 修正② mAP 双轨分工：官方全量当 LAE 基准 / 500 子集只算量化 Δ（已入账本 §2；官方值 2026-09-07 复核模型卡一致）
+- [x] 修正② mAP 双轨分工：统一全量 val2017 当 LAE/Pareto 基准 / 500 子集只算量化 Δ；全量结果已入公开 `release_data/`
+- [x] 投稿稳健性增强：官方 COCO 标注归档与当前 JSON 已按大小/MD5/SHA-256 核验；四个 detection-head-preserving YOLO INT8 工件已完成 5,000 图官方 COCOeval 点估计并入 `release_data/full_coco_int8_selective.csv`
 - [x] Y 挡数据收齐：YOLO11n 导出入账本；7 模型规范同窗口表（QC 0 间隙）入账本 §2
 - [x] 修正③ α×β 秩稳定 + Pareto + 朴素对照已入账本 §5：计划区 117 点 100% 恒序；被支配=v8n/v8l；
   朴素指标全同序（rho=1.0）→ "显著优于"说法被数据否证；**§5.1 措辞复核**：退化角 4 翻转点非"RT-x 跳

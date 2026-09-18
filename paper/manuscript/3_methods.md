@@ -11,17 +11,17 @@ All models come from the same source repository (Ultralytics) and were exported 
 
 **Table 1.** Benchmark detectors (official Ultralytics COCO-pretrained weights, 640 px, no fine-tuning).
 
-| Model | Family | Params (M) | FLOPs (G) | Official mAP50-95 |
+| Model | Family | Params (M) | FLOPs (G) | Unified full-val mAP50-95 |
 |---|---|---|---|---|
-| YOLO11n | CNN | 2.66 | 6.54 | 0.395 |
-| YOLOv8n | CNN | 3.19 | 8.74 | 0.373 |
-| YOLOv8s | CNN | 11.20 | 28.60 | 0.449 |
-| YOLOv8m | CNN | 25.93 | 78.94 | 0.502 |
-| RT-DETR-l | Transformer | 32.83 | 105.60 | 0.530 |
-| YOLOv8l | CNN | 43.71 | 165.15 | 0.529 |
-| RT-DETR-x | Transformer | 66.37 | 224.98 | 0.548 |
+| YOLO11n | CNN | 2.66 | 6.54 | 0.387 |
+| YOLOv8n | CNN | 3.19 | 8.74 | 0.367 |
+| YOLOv8s | CNN | 11.20 | 28.60 | 0.443 |
+| YOLOv8m | CNN | 25.93 | 78.94 | 0.495 |
+| RT-DETR-l | Transformer | 32.83 | 105.60 | 0.515 |
+| YOLOv8l | CNN | 43.71 | 165.15 | 0.521 |
+| RT-DETR-x | Transformer | 66.37 | 224.98 | 0.531 |
 
-*FLOPs counted at runtime on the exported ONNX graph (2 × MACs over Conv/ConvTranspose/MatMul/Gemm, so RT-DETR-l is definitionally lower than the vendor's 110.2 G, see §3.2). Official mAP = COCO val2017, as published by each model's vendor.*
+*FLOPs counted at runtime on the exported ONNX graph (2 × MACs over Conv/ConvTranspose/MatMul/Gemm, so RT-DETR-l is definitionally lower than the vendor's 110.2 G, see §3.2). Unified mAP = the same 5,000-image COCO val2017 evaluation pipeline for all seven models; the external vendor values are retained only as a consistency check.*
 
 ## 3.2 Hardware and software configuration
 
@@ -41,9 +41,9 @@ The five-round campaign lasted about 31 min. Frequency before and after each mod
 
 ## 3.4 Accuracy reference
 
-For the current development manuscript, LAE and Pareto comparisons use each model's **official mAP50-95 on COCO val2017** [5] as published by its vendor: YOLOv8 values from the Ultralytics model table, RT-DETR from [15], and YOLO11n from the Ultralytics YOLO11 model table. These values are treated as an external reference, not as a claim that the present code has re-evaluated all 5,000 images. A fixed local 500-image COCO subset is used only to compute FP32→INT8 changes Δ. Before submission, the same evaluation code will be run on the complete val2017 set and the resulting values will replace the external reference in the main tables. Until that run is complete, all absolute accuracy and Pareto conclusions are marked as provisional.
+LAE and Pareto comparisons use a **unified full COCO val2017 evaluation**: all 5,000 images are processed with the same 640-px letterbox preprocessing, model-specific output decoding, and confidence threshold (0.001). The submission accuracy path is `scripts/evaluate_full_coco_official.py`, which writes raw detections and calls `pycocotools==2.0.11` COCOeval with the standard crowd handling and maxDets settings. The local annotation archive has been verified against the official COCO release: its archive MD5 and size match the official download, and the extracted `instances_val2017.json` is byte-for-byte identical to the working file. The older `scripts/evaluate_full_coco.py` NumPy path is retained only for development-stage relative checks. A fixed local 500-image COCO subset remains the development-stage reference for the original FP32→INT8 changes Δ; the additional complete-val INT8 confirmation is reported separately in Section 4.4.
 
-**Which accuracy differences we are willing to assert.** Accuracy enters the Pareto analysis of Section 4.3, and a dominance edge is a claim, so we fix the rule for accepting one before looking at the outcome. An edge is asserted only when both of two conditions hold. First, the sign of the accuracy difference must agree across the two references we have, the vendor-published value and our own 500-image same-pipeline measurement. A pair whose two references point in opposite directions is directionally undetermined and carries no edge. Second, the paired bootstrap 95 % interval of that difference, formed by resampling the 500 images under shared indices, must have a lower bound at or above zero, so that the positive direction is established and not merely unrefuted. Of the two ways to write the second condition we take the stronger one deliberately: retaining an edge whenever the opposite direction has not been demonstrated would accept the null hypothesis. The rule is stated here because it is applied uniformly to all 21 unordered model pairs in Section 4.3, where we report how many edges survive it rather than only the pairs that decide the figure.
+**Which accuracy differences we are willing to assert.** Accuracy enters the Pareto analysis of Section 4.3, and a dominance edge is a claim, so we fix the rule for accepting one before looking at the outcome. The primary accuracy reference is now the unified full-val table. For close model pairs, we additionally report paired bootstrap intervals from the shared 5,000-image predictions when those prediction dumps are available; a point difference without an interval is described as an observed difference rather than a statistically separated ordering. The 500-image subset is used only for the INT8 development deltas and is not treated as an absolute reference for the full-model Pareto table.
 
 ## 3.5 LAE: a descriptive cost-weighted score
 
@@ -51,7 +51,7 @@ We condense the three-way accuracy–latency–size trade-off into a single scal
 
 LAE(M) = mAP(M) / ( Latency_ms(M)^α × Params_M(M)^β ) ,    (1)
 
-where α = 0.5, β = 0.3, mAP is the current official COCO mAP50-95 reference, Latency_ms is the five-round interleaved end-to-end CPU median, and Params_M is the parameter count in millions. The exponents are fixed a priori and never fitted on the benchmarked models, since fitting them to the models they score would be circular. Their qualitative reading is standard: α = 0.5 expresses diminishing returns in latency savings below a real-time budget, and β = 0.3 expresses the sub-linear cost of parameters through memory bandwidth and footprint. Section 4 reports the resulting seven-model ranking as descriptive sensitivity analysis; it is not claimed as a validated method contribution.
+where α = 0.5, β = 0.3, mAP is the validated full-val COCOeval mAP50-95 reference, Latency_ms is the five-round interleaved end-to-end CPU median, and Params_M is the parameter count in millions. The exponents are fixed a priori and never fitted on the benchmarked models, since fitting them to the models they score would be circular. Their qualitative reading is standard: α = 0.5 expresses diminishing returns in latency savings below a real-time budget, and β = 0.3 expresses the sub-linear cost of parameters through memory bandwidth and footprint. Section 4 reports the resulting seven-model ranking as descriptive sensitivity analysis; it is not claimed as a validated method contribution.
 
 Because LAE is monotone increasing in mAP and monotone decreasing in both cost axes, it cannot rank a Pareto-dominated model above its dominator. This follows from the functional form and is recorded here as a property of the score rather than as a finding of the benchmark. It takes no part in the selection protocol of Section 3.7, which is defined by the feasibility filter and the ranking within the feasible set.
 
@@ -81,7 +81,7 @@ RT-DETR static quantization fails numerically at quantization time (zero/NaN sca
 The measured table is consumed by an explicit, reproducible procedure (worked examples in Section 4, Table 9). Given a budget, expressed as a required mAP floor m*, a latency ceiling L* ms, and optionally a parameter ceiling P* M:
 
 1. State the budget as bounds: mAP ≥ m*, latency ≤ L* ms, [params ≤ P* M].
-2. Compute the feasible set, i.e. every benchmarked detector whose official mAP, measured end-to-end CPU latency, and parameter count all satisfy the bounds. For a hard per-frame deadline, apply the ceiling to the p99 tail figures of Section 4.1 (Table 4) rather than to the median, since the median carries no headroom for scheduler and OS jitter.
+2. Compute the feasible set, i.e. every benchmarked detector whose unified full-val mAP, measured end-to-end CPU latency, and parameter count all satisfy the bounds. For a hard per-frame deadline, apply the ceiling to the p99 tail figures of Section 4.1 (Table 4) rather than to the median, since the median carries no headroom for scheduler and OS jitter.
 3. Apply an explicit preference rule within the feasible set: choose the highest mAP when accuracy is primary, or the lowest p99 latency when a hard deadline is primary; ties resolve toward the lower parameter count. LAE (Eq. 1, α = 0.5, β = 0.3) is reported only as a descriptive sensitivity analysis, not as a validated superior selector.
 4. If the feasible set is empty, relax the tightest bound by one step the application allows (raise L*, lower m*), and repeat.
 

@@ -4,23 +4,23 @@
 
 **Table 2** reports the primary end-to-end CPU latency benchmark. All seven detectors were measured in five interleaved rounds, with the starting position rotated across rounds, on the i7-14650HX at 16 intra-op threads. The reported statistic is the median of the five round medians; the range, p95, and p99 are computed over those five round medians. Median latency spans 33.0 ms (YOLOv8n) to 410.9 ms (RT-DETR-x), while the observed round range spans 30.4–458.7 ms. Within each family, latency increases with model scale. The LAE column is retained only as a descriptive budget lookup.
 
-**Table 2.** Primary five-round interleaved end-to-end latency (i7-14650HX, 16 intra-op threads) and descriptive LAE (α = 0.5, β = 0.3, with provisional official mAP and parameter counts as in Table 1).
+**Table 2.** Primary five-round interleaved end-to-end latency (i7-14650HX, 16 intra-op threads) and descriptive LAE (α = 0.5, β = 0.3, using the unified full-val mAP and parameter counts in Table 1).
 
-| Model | Family | E2E median (ms) | Five-round range (ms) | p95 / p99 (ms) | Official mAP50-95 | LAE | Rank |
+| Model | Family | E2E median (ms) | Five-round range (ms) | p95 / p99 (ms) | Unified mAP50-95 | LAE | Rank |
 |---|---|---|---|---|---|---|---|
-| YOLO11n | CNN | 34.23 | 30.39–34.70 | 34.70 / 34.70 | 0.395 | 0.0503 | 1 |
-| YOLOv8n | CNN | 33.00 | 30.99–40.00 | 39.78 / 39.96 | 0.373 | 0.0458 | 2 |
-| YOLOv8s | CNN | 68.50 | 66.34–73.32 | 72.96 / 73.25 | 0.449 | 0.0263 | 3 |
-| YOLOv8m | CNN | 158.65 | 152.06–184.88 | 181.14 / 184.13 | 0.502 | 0.0150 | 4 |
-| RT-DETR-l | Transformer | 226.37 | 222.36–257.88 | 251.67 / 256.64 | 0.530 | 0.0124 | 5 |
-| YOLOv8l | CNN | 273.34 | 266.84–275.63 | 275.54 / 275.61 | 0.529 | 0.0103 | 6 |
-| RT-DETR-x | Transformer | 410.90 | 357.63–458.70 | 452.39 / 457.44 | 0.548 | 0.0077 | 7 |
+| YOLO11n | CNN | 34.23 | 30.39–34.70 | 34.70 / 34.70 | 0.387 | 0.0493 | 1 |
+| YOLOv8n | CNN | 33.00 | 30.99–40.00 | 39.78 / 39.96 | 0.367 | 0.0451 | 2 |
+| YOLOv8s | CNN | 68.50 | 66.34–73.32 | 72.96 / 73.25 | 0.443 | 0.0259 | 3 |
+| YOLOv8m | CNN | 158.65 | 152.06–184.88 | 181.14 / 184.13 | 0.495 | 0.0148 | 4 |
+| RT-DETR-l | Transformer | 226.37 | 222.36–257.88 | 251.67 / 256.64 | 0.515 | 0.0120 | 5 |
+| YOLOv8l | CNN | 273.34 | 266.84–275.63 | 275.54 / 275.61 | 0.521 | 0.0101 | 6 |
+| RT-DETR-x | Transformer | 410.90 | 357.63–458.70 | 452.39 / 457.44 | 0.531 | 0.0074 | 7 |
 
 *E2E latency = forward pass plus Python decode + NMS for YOLO, and forward pass only for RT-DETR (which is decoding-inclusive and NMS-free). The raw CSV records all five round medians and the rotated order. The temperature fields are unavailable on this Windows setup and are left empty; frequency before/after each model is recorded.*
 
-Two pairwise observations anchor the rest of the paper. First, the two n-scale models are close in latency: YOLOv8n is faster in the five-round median (33.00 versus 34.23 ms), but the round ranges overlap and the direction changes in round 5, so we report a point-estimate ordering rather than a dominance claim. Second, RT-DETR-l is the lower-cost member of an accuracy-tied pair with YOLOv8l. Their official mAP values differ by 0.001, while RT-DETR-l uses 0.75× the parameters and 0.83× the measured latency (226.37 versus 273.34 ms). The five round-matched latency ratios are 0.848, 0.937, 0.823, 0.824, and 0.823, all below one. The accuracy comparison remains provisional until the complete COCO val2017 re-evaluation is run.
+Two pairwise observations anchor the rest of the paper. First, the two n-scale models are close in latency: YOLOv8n is faster in the five-round median (33.00 versus 34.23 ms), but the round ranges overlap and the direction changes in round 5, so we report a point-estimate ordering rather than a dominance claim. Second, RT-DETR-l is the lower-cost but lower-accuracy member of the RT-DETR-l/YOLOv8l pair in the unified full-val evaluation (0.515 versus 0.521 mAP). It uses 0.75× the parameters and 0.83× the measured latency (226.37 versus 273.34 ms). The five round-matched latency ratios are 0.848, 0.937, 0.823, 0.824, and 0.823, all below one.
 
-**Cross-checking the accuracy column.** Because the RT-DETR-l and YOLOv8l pair above is decided by a 0.001 vendor gap, we checked the accuracy column of Table 1 rather than assuming it. All seven models were re-measured through one local pipeline on the fixed 500-image COCO subset, under the same code and the same images used for the INT8 deltas. The 95 % bootstrap intervals on those subset values are about ±0.025 wide at every model, and all seven deviations from the published values fall inside that width. Six of the seven measure above their vendor value (YOLO11n +0.010, YOLOv8n +0.023, YOLOv8s +0.020, YOLOv8m +0.006, YOLOv8l +0.010, RT-DETR-l +0.006), which is the sign a 500-image subset drawn to be easier than the full set would produce, and one inverts: RT-DETR-x measures 0.539 against its published 0.548, a −0.009 deviation that we record as a caveat on that model rather than treat as agreement. This check is the reason the pair in Section 4.1 is reported as accuracy-tied rather than as a resolved ordering: on the same pipeline the sign of the 0.001 gap reverses, and a difference that small does not survive a change of measurement.
+**Unified full-val accuracy.** We re-evaluated all seven FP32 models on the complete 5,000-image COCO val2017 set with one preprocessing, decoding, and standard `pycocotools` COCOeval. The resulting mAP50-95 values are 0.387 (YOLO11n), 0.367 (YOLOv8n), 0.443 (YOLOv8s), 0.495 (YOLOv8m), 0.521 (YOLOv8l), 0.515 (RT-DETR-l), and 0.531 (RT-DETR-x), and are the values used in Tables 1, 2, and the Pareto analysis. The external vendor values remain useful as a sanity check but are not mixed into the main table. The full run is reproducible from `scripts/evaluate_full_coco_official.py` and `results/full_coco_map_official.csv`; the 500-image subset remains reserved for relative INT8 deltas.
 
 Latency on this CPU is not a stable scalar. The primary evidence is therefore the rotated five-round median and its explicit range, not a single sequential window. The historical cross-day and single-window checks below are retained as supplementary context only; they do not define the main table or the LAE lookup.
 
@@ -64,25 +64,25 @@ The tail is not uniform across models: p95 sits between 5 % (YOLOv8l) and 39 % (
 |---|---|---|---|---|---|
 | YOLOv8l / YOLOv8n | 18.9 | 13.7 | – | 8.28 | FLOPs overstate e2e latency ≈ 2.3× |
 | YOLOv8s / YOLOv8n | 3.27 | 3.51 | – | 2.08 | parameter ratio exceeds FLOPs ratio |
-| RT-DETR-l / YOLOv8l | 0.64 | 0.75 | – | 0.83 | lower measured cost, with provisional accuracy tie |
+| RT-DETR-l / YOLOv8l | 0.64 | 0.75 | – | 0.83 | lower measured cost, but lower full-val mAP |
 
 *Forward and end-to-end coincide for RT-DETR (no NMS, decoding inside the forward pass). The reported ratios use the medians in Table 2; forward-only YOLO ratios are not mixed into the primary comparison.*
 
 We do not claim a fixed ordering among the three metrics: the parameter ratio exceeds the FLOPs ratio for the YOLOv8s/YOLOv8n pair (3.51 versus 3.27). The robust observation is directional within this seven-model set: theoretical counts overstate measured CPU latency gaps, with the largest discrepancy for YOLOv8l versus YOLOv8n. The Transformer's measured cost per counted GFLOP is also higher than the CNN's (about 2.14 versus 1.65 ms/G for RT-DETR-l against YOLOv8l), so per-FLOP efficiency figures cannot be read as CPU latency ratios.
 
-Measured latency nonetheless preserves the cross-family conclusion that FLOPs capture only coarsely. RT-DETR-l is cheaper than YOLOv8l on every cost axis we measure: 0.64× the FLOPs, 0.75× the parameters, and 0.83× the interleaved median latency. The official accuracy difference is only 0.001, but the local full-val confirmation is still pending. FLOPs distort the size of this observed advantage, not its direction.
+Measured latency nonetheless preserves the cross-family conclusion that FLOPs capture only coarsely. RT-DETR-l is cheaper than YOLOv8l on every cost axis we measure: 0.64× the FLOPs, 0.75× the parameters, and 0.83× the interleaved median latency. The unified full-val mAP is lower for RT-DETR-l (0.515 versus 0.521), so this is a cost–accuracy trade-off rather than an accuracy-tied dominance claim. FLOPs distort the size of the observed cost advantage, not its direction.
 
 ## 4.3 LAE: ranking, exponent robustness, and relation to single-axis metrics
 
-LAE scores with α = 0.5, β = 0.3 (Eq. 1) and the resulting ranks are the last two columns of Table 2. With the current vendor accuracy reference and the new interleaved medians, the descriptive ranking is YOLO11n > YOLOv8n > YOLOv8s > YOLOv8m > RT-DETR-l > YOLOv8l > RT-DETR-x, with scores from 0.0503 down to 0.0077. This is not a validated selector: the ranking is reproduced by simple single-axis orderings on this near-monotone seven-model set, and it must be recomputed when the complete COCO accuracy evaluation is available.
+LAE scores with α = 0.5, β = 0.3 (Eq. 1) and the resulting ranks are the last two columns of Table 2. With the unified full-val accuracy reference and the interleaved medians, the descriptive ranking is YOLO11n > YOLOv8n > YOLOv8s > YOLOv8m > RT-DETR-l > YOLOv8l > RT-DETR-x, with scores from 0.0494 down to 0.0074. This is not a validated selector: the ranking is reproduced by simple single-axis orderings on this near-monotone seven-model set.
 
-**Dominance, under a rule stated in advance (Fig. 2).** The three axes are accuracy up, latency down, parameters down. Because the complete val2017 re-evaluation is not yet complete, no accuracy-based dominance edge is asserted in the current development manuscript. Cost-axis comparisons are shown descriptively, but the final Pareto frontier will be regenerated from the unified accuracy table before submission.
+**Dominance, under a rule stated in advance (Fig. 2).** The three axes are accuracy up, latency down, parameters down. After replacing the vendor column with the unified full-val measurements, no model dominates another on all three axes: every higher-accuracy step also incurs a latency or parameter cost, and the YOLO11n/YOLOv8n pair trades accuracy against latency and size. The resulting frontier therefore contains all seven point estimates; this is a descriptive statement, not evidence that the models are statistically separated.
 
-The closest cost pair is YOLO11n versus YOLOv8n. YOLO11n has fewer parameters and FLOPs, while the five-round latency medians are close (34.23 versus 33.00 ms) and the round direction changes once. We therefore report the point estimate without asserting dominance. The RT-DETR-l versus YOLOv8l accuracy edge is likewise withheld until the unified full-val evaluation.
+The closest cost pair is YOLO11n versus YOLOv8n. YOLO11n has fewer parameters and FLOPs and higher full-val mAP (0.387 versus 0.367), while the five-round latency medians are close (34.23 versus 33.00 ms) and the round direction changes once. We therefore report the point estimate without asserting dominance. RT-DETR-l versus YOLOv8l is a clear cost–accuracy trade-off in the point estimates (0.515 versus 0.521 mAP; 226.37 versus 273.34 ms).
 
-The RT-DETR-l and YOLOv8l pair is currently an accuracy-tied cost comparison: the vendor gap is 0.001 and the 500-image development check is not an adequate absolute reference. Reporting zero asserted edges in the current figure is deliberate and will be revisited after full-val evaluation.
+The RT-DETR-l and YOLOv8l pair is therefore not an accuracy-tied comparison under the unified table. It remains on the three-objective frontier because its lower latency, parameter count, and FLOPs trade against the 0.014 mAP deficit.
 
-**Rank stability over the exponents (Fig. 3(a)).** The current grid analysis is descriptive only. It shows the same ordering across the planned α ∈ [0.2, 0.8] × β ∈ [0.1, 0.5] grid when using the vendor accuracy column and the new interleaved medians; the result will be regenerated after the unified accuracy table replaces the provisional reference.
+**Rank stability over the exponents (Fig. 3(a)).** The grid analysis remains descriptive only. It shows the same ordering across the planned α ∈ [0.2, 0.8] × β ∈ [0.1, 0.5] grid when using the unified full-val accuracy column and the interleaved medians; the ranking is reproduced by simple single-axis orderings on this near-monotone set.
 
 **Platform scope.** The revised benchmark makes no cross-platform ranking claim; the evidence is limited to the Intel i7-14650HX and ONNX Runtime 1.28.0.
 
@@ -110,6 +110,8 @@ We report the INT8 study as a comparison against each model's FP32 baseline meas
 **Accuracy.** Table 7 reports the FP32 → INT8 change in mAP50-95 on a fixed local 500-image COCO subset (same images and same code as the relative Δ of Section 3.4), arranged so that each recipe appears once under each export format. **The export format leaves accuracy where it is.** Holding the recipe fixed and changing only the format moves mAP by +0.001 to +0.005 for the naive recipe and by −0.003 to −0.001 for the head-preserving recipe, and the paired bootstrap 95 % CIs for both contrasts at both scales contain zero (B = 1000, resampling the 500 images with shared indices, Section 3.4).
 
 **The recipe does move accuracy, and how far depends on the scale.** Naive static, which leaves the detection head in INT8, loses 0.068–0.087, a consistent ≈ 17 % across the four YOLO scales, with CIs excluding zero throughout. Head-preserving static, which keeps the whole detection head in FP32, moves mAP by −0.009 to +0.001 across the four scales. At YOLOv8s and the two larger scales the paired CIs contain zero. At YOLOv8n the change is a small but resolvable loss of 0.005 (95 % CI [−0.0125, −0.0007]). The naive minus head-preserving gap is −0.064 at YOLOv8n and −0.083 at YOLOv8s, and both paired bootstrap 95 % CIs exclude zero, which is the formal demonstration that quantizing the detection head, rather than quantization itself, is the accuracy bottleneck (Section 5.2). Dynamic quantization costs 0.006 (RT-DETR-l) to 0.016 (YOLOv8n). RT-DETR static fails numerically at quantization time in this toolchain under both export formats (Section 3.6) and is reported as such, while dynamic RT-DETR is unaffected. Adding the format axis therefore settles the question the previous version of this section could not: the two effects are controlled by different choices, so a fast quantized graph and an accurate one are not in conflict.
+
+**Complete-val confirmation.** As a robustness check on the development-subset result, we also evaluated the four detection-head-preserving YOLO artifacts on all 5,000 val2017 images with the same official COCOeval path. Their mAP50-95 values are 0.357, 0.439, 0.492, and 0.516 for YOLOv8n, s, m, and l, respectively, versus FP32 baselines of 0.367, 0.443, 0.495, and 0.521. The corresponding changes are −0.0098, −0.0032, −0.0025, and −0.0054. Thus the direction and scale of the accuracy effect agree with the 500-image analysis, and no full-val accuracy collapse appears at any tested scale. These are complete-val point estimates; the paired bootstrap intervals reported above remain the 500-image development-stage uncertainty analysis and are not silently promoted to full-val intervals.
 
 **Table 7.** FP32 → INT8 mAP50-95 change Δ on the 500-image subset, by recipe (columns) and export format (grouped).
 
@@ -152,18 +154,18 @@ We tested that account as a prediction rather than leaving it as an explanation.
 
 ## 4.5 Worked selection look-ups
 
-**Table 9** applies the four-step protocol of Section 3.7 to representative budgets. Each non-empty row is read as: budget in the first column, feasible set in the second (provisional official mAP plus measured five-round median latency plus parameters all satisfying the bounds), and the feasible detector selected by the declared application priority in the third. The final row shows the empty-set case, which triggers step 4 (relax the tightest bound and retry).
+**Table 9** applies the four-step protocol of Section 3.7 to representative budgets. Each non-empty row is read as: budget in the first column, feasible set in the second (unified full-val mAP plus measured five-round median latency plus parameters all satisfying the bounds), and the feasible detector selected by the declared application priority in the third. The final row shows the empty-set case, which triggers step 4 (relax the tightest bound and retry).
 
 **Table 9.** Worked examples of the selection look-up protocol (latency column = Table 2, five-round interleaved median, i7-14650HX).
 
 | Budget | Feasible set | Recommended | Why |
 |---|---|---|---|
-| mAP ≥ 0.37, ≤ 40 ms | YOLO11n, YOLOv8n | YOLO11n | Highest LAE in the feasible set |
-| mAP ≥ 0.50, no latency cap | YOLOv8m, YOLOv8l, RT-DETR-l, RT-DETR-x | YOLOv8m | Highest descriptive LAE, since its ≈ 68 ms median advantage over RT-DETR-l outweighs the marginal mAP gain |
+| mAP ≥ 0.37, ≤ 40 ms | YOLO11n | YOLO11n | YOLOv8n is below the full-val accuracy floor |
+| mAP ≥ 0.50, no latency cap | RT-DETR-l, YOLOv8l, RT-DETR-x | RT-DETR-l | Highest descriptive LAE among the feasible models |
 | params ≤ 35 M, mAP ≥ 0.45 | YOLOv8m, RT-DETR-l | YOLOv8m | Both fit the parameter cap, and the descriptive LAE prefers YOLOv8m (25.9 M, 158.65 ms) |
 | mAP ≥ 0.50, ≤ 120 ms, params ≤ 30 M | ∅ | – | Infeasible, so step 4 relaxes the tightest bound, e.g. the latency ceiling to ≤ 200 ms, then retries |
 
-*The recommendation follows the declared application priority within the feasible set; LAE is descriptive only. In the first row both n-scale models are feasible, and the recommendation follows the point-estimate ranking of Table 2 rather than a dominance relation. The four rows exercise the filter, the ranking within a multi-member feasible set, the optional parameter ceiling, and the empty-set branch of step 4.*
+*The recommendation follows the declared application priority within the feasible set; LAE is descriptive only. The four rows exercise the filter, the ranking within a multi-member feasible set, the optional parameter ceiling, and the empty-set branch of step 4.*
 
-The table is only valid on the platform and precision reference it was built from: the latency column is the five-round i7-14650HX measurement of Table 2, and the accuracy column is currently the vendor's official COCO val2017 mAP. Changing CPU, input resolution, or GPU deployment requires re-measuring the latency column before the table is used. The four-step procedure itself is unchanged. LAE sensitivity is reported separately and is not used to claim a superior selector. The role and the limits of the index are discussed in Sections 4.3 and 5.3.
+The table is only valid on the platform and precision reference it was built from: the latency column is the five-round i7-14650HX measurement of Table 2, and the accuracy column is the unified full COCO val2017 mAP from the local evaluation pipeline. Changing CPU, input resolution, or GPU deployment requires re-measuring the latency column before the table is used. The four-step procedure itself is unchanged. LAE sensitivity is reported separately and is not used to claim a superior selector. The role and the limits of the index are discussed in Sections 4.3 and 5.3.
 

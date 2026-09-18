@@ -1,12 +1,17 @@
-"""本地 COCO mAP 评估库（与 Ultralytics 官方口径同源，纯 CPU）。
+"""轻量 NumPy 检查用的本地检测 AP 评估库（纯 CPU）。
 
-背景：本机没有 pycocotools（Windows + py3.14 装不上）。但 Ultralytics 官方 mAP
-本就不用 pycocotools——它自带 numpy 移植的 COCO 匹配 + AP。官方口径（已读源码确认）：
+背景：这个模块用于没有标准 COCO API 时的开发阶段相对比较。它近似 Ultralytics
+的匹配和 PR 插值，但**不是**官方 COCOeval：它不处理 crowd-ignore、每图 maxDets
+和 COCOeval 的面积分层。因此它的输出不能在论文中标为标准 COCO mAP。
+此前将它称为官方口径是不准确的，现已明确降级为探索性指标。
+
+匹配实现的参考行为：
 1) match_predictions：逐 IoU 阈值(0.5:0.95 步 0.05 共 10 档)，对「同类」的
    pred×gt IoU 矩阵做贪心去重（按 IoU 降序，pred 与 gt 各最多匹配一次）→ 每预测一行 10 列 bool tp。
 2) ap_per_class：按置信度累计 precision-recall 求各 IoU 下 AP → 平均得 mAP50-95。
-本模块的 match_tp 逐字复刻第 1 步（numpy 版），聚合直接复用 ultralytics 的 DetMetrics/
-ap_per_class —— 保证与官方模型卡数字同一算法，INT8 Δ 就是「官方同款算法会报的差」。
+本模块的 match_tp 复用了第 1 步的近似实现，AP 聚合采用 101 点插值。它保留用于
+FP32/INT8 的开发阶段同管线相对差值；投稿用绝对精度请运行
+``scripts/evaluate_full_coco_official.py``。
 
 坐标系约定：所有预测框/真值框统一换算到**原图像素 xyxy** 后再匹配（IoU 匹配
 与坐标系无关，只需双方同空间；这样避免纠缠 letterbox pad）。
@@ -26,6 +31,61 @@ COCO_CAT_IDS = [
 _CAT_TO_IDX = {cid: i for i, cid in enumerate(COCO_CAT_IDS)}
 
 IOUV = np.linspace(0.5, 0.95, 10)  # COCO 十个 IoU 档
+
+
+def _compute_ap(recall: np.ndarray, precision: np.ndarray) -> float:
+    """开发阶段 101 点插值 AP；不等同于完整 COCOeval。"""
+    mrec = np.concatenate(([0.0], np.asarray(recall, dtype=np.float64), [1.0]))
+    mpre = np.concatenate(([1.0], np.asarray(precision, dtype=np.float64), [0.0]))
+    mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
+    x = np.linspace(0.0, 1.0, 101)
+    return float(np.trapezoid(np.interp(x, mrec, mpre), x))
+
+
+def _smooth(y: np.ndarray, fraction: float = 0.05) -> np.ndarray:
+    """Small moving-average smoother used only to choose the F1 operating point."""
+    y = np.asarray(y, dtype=np.float64)
+    if y.size < 3:
+        return y
+    window = max(3, int(round(y.size * fraction * 2)))
+    if window % 2 == 0:
+        window += 1
+    pad = window // 2
+    padded = np.pad(y, (pad, pad), mode="edge")
+    return np.convolve(padded, np.ones(window) / window, mode="valid")
+
+
+def _ap_per_class_numpy(tp: np.ndarray, conf: np.ndarray,
+                        pred_cls: np.ndarray, target_cls: np.ndarray):
+    """Return AP arrays needed by ``_finish_map`` without external packages."""
+    order = np.argsort(-conf, kind="stable")
+    tp, conf, pred_cls = tp[order], conf[order], pred_cls[order]
+    unique_classes, target_counts = np.unique(target_cls, return_counts=True)
+    nc, niou = unique_classes.size, tp.shape[1]
+    px = np.linspace(0.0, 1.0, 1000)
+    p_curve = np.zeros((nc, px.size), dtype=np.float64)
+    r_curve = np.zeros((nc, px.size), dtype=np.float64)
+    ap = np.zeros((nc, niou), dtype=np.float64)
+    eps = 1e-16
+
+    for ci, cls in enumerate(unique_classes):
+        mask = pred_cls == cls
+        n_pred = int(mask.sum())
+        n_gt = int(target_counts[ci])
+        if n_pred == 0 or n_gt == 0:
+            continue
+        fpc = (1.0 - tp[mask]).cumsum(axis=0)
+        tpc = tp[mask].cumsum(axis=0)
+        recall = tpc / (n_gt + eps)
+        precision = tpc / (tpc + fpc + eps)
+        r_curve[ci] = np.interp(-px, -conf[mask], recall[:, 0], left=0.0)
+        p_curve[ci] = np.interp(-px, -conf[mask], precision[:, 0], left=1.0)
+        for j in range(niou):
+            ap[ci, j] = _compute_ap(recall[:, j], precision[:, j])
+
+    f1_curve = 2.0 * p_curve * r_curve / (p_curve + r_curve + eps)
+    best = int(_smooth(f1_curve.mean(axis=0), 0.1).argmax())
+    return p_curve[:, best], r_curve[:, best], f1_curve[:, best], ap, unique_classes.astype(np.int64)
 
 
 def category_to_idx(category_id: int) -> int:
@@ -61,7 +121,7 @@ def box_iou(gt: np.ndarray, pr: np.ndarray) -> np.ndarray:
 
 def match_tp(pred_cls: np.ndarray, gt_cls: np.ndarray, iou_mat: np.ndarray,
              iouv: np.ndarray = IOUV) -> np.ndarray:
-    """逐字复刻 ultralytics DetectionValidator.match_predictions（非 scipy 分支）。
+    """近似 ultralytics DetectionValidator.match_predictions 的 NumPy 实现。
 
     参数：pred_cls(N,) 预测类；gt_cls(M,) 真值类；iou_mat(M,N) 逐对 IoU。
     返回：(N,10) bool，第 j 列 = 该预测在 IoU>=iouv[j] 且类别匹配下是否被贪心匹配上。
@@ -94,12 +154,10 @@ def match_tp(pred_cls: np.ndarray, gt_cls: np.ndarray, iou_mat: np.ndarray,
 
 def _finish_map(stats_tp: list, stats_conf: list, stats_pred_cls: list,
                 stats_gt_cls: list, stats_gt_img: list) -> dict:
-    """把逐图累计的 (n,10) tp/conf/类 交给 ultralytics ap_per_class 求全局 AP。
+    """把逐图累计的 (n,10) tp/conf/类交给开发阶段 NumPy AP 汇总器。
 
     返回：{map50_95, map50, precision(max-F1), recall(max-F1), ap50_95_per_class, class_ids}
     """
-    from ultralytics.utils.metrics import ap_per_class  # 延迟 import：官方聚合
-
     tp = np.concatenate(stats_tp, 0)
     conf = np.concatenate(stats_conf, 0)
     pcls = np.concatenate(stats_pred_cls, 0)
@@ -110,8 +168,7 @@ def _finish_map(stats_tp: list, stats_conf: list, stats_pred_cls: list,
         return {"map50_95": 0.0, "map50": 0.0, "precision": 0.0, "recall": 0.0,
                 "ap50_95_per_class": np.zeros(80), "class_ids": np.arange(80),
                 "n_targets": int(tcls.shape[0]), "n_pred_total": 0}
-    # ap_per_class 返回 (tp, fp, p, r, f1, ap, unique_classes, ...)，取 [2:7]
-    p, r, f1, ap, unique_classes = ap_per_class(tp, conf, pcls, tcls, plot=False)[2:7]
+    p, r, f1, ap, unique_classes = _ap_per_class_numpy(tp, conf, pcls, tcls)
     map50 = float(ap[:, 0].mean())
     map50_95 = float(ap.mean())
     per_class = np.zeros(80)
@@ -123,7 +180,7 @@ def _finish_map(stats_tp: list, stats_conf: list, stats_pred_cls: list,
 
 
 class COCOEval:
-    """逐图喂预测与真值，结束时按官方口径出 mAP50-95 / mAP50。
+    """逐图喂预测与真值，结束时输出开发阶段 mAP50-95 / mAP50。
 
     用法：
         ev = COCOEval()

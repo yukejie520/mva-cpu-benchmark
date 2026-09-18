@@ -29,8 +29,11 @@ from pathlib import Path
 
 import numpy as np
 
-# 官方聚合（与 eval_map / map_subset*.csv 同一来源，保证重算 mAP 与存档一致）
-from ultralytics.utils.metrics import ap_per_class  # noqa: E402
+# Development aggregation.  The submission-grade full-val path is
+# ``evaluate_full_coco_official.py``; these 500-image INT8 deltas use the same
+# lightweight per-image representation as ``eval_dump.py`` and do not claim
+# to be official COCOeval.
+from coco_eval import _ap_per_class_numpy  # noqa: E402
 
 # 归档验证基准：模型 → (fp32 存档 mAP, {scheme: 存档 mAP})（map_subset.csv / map_subset_int8.csv）
 # qop / qop_sel 来自 results/map_probe_qop.csv（QOperator 导出格式，同 500 图同管线）
@@ -64,14 +67,14 @@ def _concat(entries, key):
 
 
 def mAP_of(entries: list[dict]) -> float:
-    """由逐图结果拼全量 → 官方 mAP50-95。"""
+    """由逐图结果拼全量 → 开发阶段 NumPy mAP50-95。"""
     tp = _concat(entries, "tp").astype(bool)
     conf = _concat(entries, "conf")
     pcls = _concat(entries, "pred_cls").astype(np.int64)
     tcls = _concat(entries, "gt_cls").astype(np.int64)
     if tp.shape[0] == 0:
         return 0.0
-    ap = ap_per_class(tp, conf, pcls, tcls, plot=False)[5]
+    ap = _ap_per_class_numpy(tp, conf, pcls, tcls)[3]
     return float(ap.mean())
 
 

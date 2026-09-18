@@ -8,11 +8,11 @@
 
 ![Fig. 2](results/figures/Fig2.png)
 
-**Fig. 2.** Accuracy–latency–size analysis using the five-round interleaved medians (Section 3.3), i7-14650HX at 16 intra-op threads. Horizontal axis: measured end-to-end CPU latency on a log scale. Vertical axis: provisional official COCO mAP50-95. Marker area is proportional to parameter count. Each point is labelled with its model name, so the family is recoverable without colour. Because the complete val2017 re-evaluation is pending, no accuracy-based Pareto edge is asserted; the figure is a provisional two-dimensional projection. The star marks the descriptive LAE top-1 (YOLO11n at α = 0.5, β = 0.3).
+**Fig. 2.** Accuracy–latency–size analysis using the five-round interleaved medians (Section 3.3), i7-14650HX at 16 intra-op threads. Horizontal axis: measured end-to-end CPU latency on a log scale. Vertical axis: unified standard COCOeval mAP50-95 on all 5,000 val2017 images. Marker area is proportional to parameter count. Each point is labelled with its model name, so the family is recoverable without colour. The star marks the descriptive LAE top-1 (YOLO11n at α = 0.5, β = 0.3); Pareto statements remain descriptive point-estimate comparisons.
 
 ![Fig. 3](results/figures/Fig3.png)
 
-**Fig. 3.** Descriptive LAE robustness and margin behaviour under the fixed exponents of Eq. 1. (a) Exponent-sensitivity heat map over the wide grid α ∈ [0.05, 1.0], β ∈ [0.05, 0.6], using the provisional vendor accuracy column and the five-round latency medians. (b) Efficiency margins computed per counted GFLOP (purple) and per measured millisecond (blue) for the pairs YOLOv8n over YOLOv8l (13.3 versus 8.28) and YOLOv8l over RT-DETR-l (0.64 versus 0.83). The figure is a sensitivity analysis, not evidence of a superior selection method.
+**Fig. 3.** Descriptive LAE robustness and margin behaviour under the fixed exponents of Eq. 1. (a) Exponent-sensitivity heat map over the wide grid α ∈ [0.05, 1.0], β ∈ [0.05, 0.6], using the unified standard COCOeval accuracy column and the five-round latency medians. (b) Efficiency margins computed per counted GFLOP (purple) and per measured millisecond (blue) for the pairs YOLOv8n over YOLOv8l (13.3 versus 8.28) and YOLOv8l over RT-DETR-l (0.64 versus 0.83). The figure is a sensitivity analysis, not evidence of a superior selection method.
 
 ![Fig. 4](results/figures/Fig4.png)
 

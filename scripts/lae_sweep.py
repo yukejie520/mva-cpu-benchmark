@@ -3,10 +3,9 @@
 数据源（单源真值纪律）：
 - 延迟 / 参数量 / GFLOPs：读 `results/latency_canonical7.csv`（2026-09-07 单窗口规范表，
   账本 §2 唯一真源。e2e_median_ms 已是 3 轮中位数之中位数）。
-- 官方 mAP50-95：下方 MAP 字典（账本 §2 精度表；val2017 全量官方值，LAE 的 mAP 一律用官方）。
-  来源：YOLO11n=Ultralytics YOLO11 文档；YOLOv8 n/s/m/l=Ultralytics YOLOv8 README 模型表
-  （2026-09-07 再次核对 37.3/44.9/50.2/52.9）；RT-DETR l/x=Lyu et al. arXiv:2304.08069 Table。
-  ⚠️ 计划文件修正②里"0.371/0.370/0.439/0.500"是过时笔误，已由模型卡核对作废，账本为准。
+- accuracy reference: the vendor/model-card table below remains the compatibility
+  baseline for historical LAE/bootstrap scripts. A locally re-evaluated table must
+  not be substituted here until it has passed the standard COCOeval audit.
 
 口径（账本 §5 拍板）：
 - LAE = mAP / (Latency_ms^α × Params_M^β)，默认 α=0.5、β=0.3（固定指数，不拟合）。
@@ -28,22 +27,34 @@ from pathlib import Path
 
 import numpy as np
 
-# 官方 mAP50-95（LAE/Pareto 的 mAP 来源，口径=COCO val2017 全量 640px 单模型单尺度）
+# Historical external reference values.  Keep this name stable because
+# map_bootstrap7.py and the archived INT8 reports import it.  In particular,
+# do not silently replace these with the current local NumPy evaluator output.
 MAP_OFFICIAL = {
-    "YOLO11n": 0.395,   # Ultralytics YOLO11 文档模型表（2026-09-06 记账）
-    "YOLOv8n": 0.373,   # Ultralytics YOLOv8 README（2026-09-07 核对 37.3）
-    "YOLOv8s": 0.449,   # 同上（44.9）
-    "YOLOv8m": 0.502,   # 同上（50.2）
-    "YOLOv8l": 0.529,   # 同上（52.9）
-    "RT-DETR-l": 0.530,  # Lyu et al., arXiv:2304.08069
-    "RT-DETR-x": 0.548,  # 同上
+    "YOLO11n": 0.395,
+    "YOLOv8n": 0.373,
+    "YOLOv8s": 0.449,
+    "YOLOv8m": 0.502,
+    "YOLOv8l": 0.529,
+    "RT-DETR-l": 0.530,
+    "RT-DETR-x": 0.548,
 }
+
+
+def load_full_map(path: Path | str) -> dict[str, float]:
+    """Load a *validated* local full-val table explicitly supplied by a caller."""
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    values = {r["name"]: float(r["map50_95"]) for r in rows}
+    if len(values) != 7 or any(int(r["images"]) != 5000 for r in rows):
+        raise ValueError(f"{path} must contain seven 5,000-image rows")
+    return values
 DEFAULT_ALPHA, DEFAULT_BETA = 0.5, 0.3
 CANON_CSV = Path(__file__).resolve().parents[1] / "results" / "latency_canonical7.csv"
 
 
 def load_canonical(path: Path | str = CANON_CSV) -> list[dict]:
-    """读规范同窗口表，仅取在 MAP_OFFICIAL 中的模型 → {name, map, lat_ms, params_m, gflops}。"""
+    """Read the canonical latency table and join the unified full-val mAP."""
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):

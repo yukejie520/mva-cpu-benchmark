@@ -1,4 +1,4 @@
-"""本地 mAP 评估驱动：ORT 前向（FP32/INT8 通用）+ 官方口径 COCO AP。
+"""本地开发阶段 mAP 评估驱动：ORT 前向（FP32/INT8 通用）+ NumPy AP。
 
 用途：账本 §3 的 INT8 mAPΔ。对同一批子集图分别跑 FP32 与 INT8，
 两者用同一评估代码/同一匹配口径 → Δ 就是"量化掉多少精度"。
@@ -10,8 +10,9 @@
   第5=conf，第6=cls。→ ×640 得画布 cxcywh → 转 xyxy → to_orig（免 NMS）。
 - 匹配在**原图像素**进行（IoU 匹配与坐标系无关，只需双方同空间）。
 
-口径：conf>=0.001（COCO AP 惯例）；YOLO NMS iou=0.7、max_det=300（对齐 ultralytics val）；
-iscrowd 标注剔除（官方 AP 惯例）。类号经 category_to_idx 映射到 0..79。
+口径：conf>=0.001（COCO AP 惯例）；YOLO NMS iou=0.7、max_det=300（对齐 ultralytics val）。
+此脚本剔除 iscrowd，且不执行 COCOeval 的 maxDets/面积分层处理，因此只能用于开发阶段
+相对比较；投稿用绝对精度请运行 ``evaluate_full_coco_official.py``。
 
 用法：
     python scripts/eval_map.py --onnx data/yolov8n.onnx --name YOLOv8n --kind yolo \

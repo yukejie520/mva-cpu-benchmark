@@ -1,4 +1,4 @@
-"""论文图 P1-P4 生成（W5–W6 迭代 v5；数据全部从 results/*.csv + lae_sweep.MAP_OFFICIAL 单源读入，
+"""论文图 P1-P4 生成（W5–W6 迭代 v5；数据全部从 results/*.csv 单源读入，
 不手抄账本）。
 
 v5 改动（2026-09-07 新增 P4，用户拍板 双面板）：
@@ -104,6 +104,7 @@ SUP_1MGAMMA = r"$^{(1-\gamma)}$"
 
 ROOT = Path(__file__).resolve().parents[1]
 FIG_DIR = ROOT / "results" / "figures"
+OFFICIAL_MAP_CSV = ROOT / "results" / "full_coco_map_official.csv"
 # MVA requires captions outside artwork. Existing footer calls use Figure.text;
 # suppress only those calls while retaining axes labels and legends.
 Figure.text = lambda self, *args, **kwargs: None
@@ -114,6 +115,18 @@ Figure.text = lambda self, *args, **kwargs: None
 def _read(path: str | Path) -> list[dict]:
     with open(path, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
+
+
+def load_plot_canonical(path: str | Path) -> list[dict]:
+    """Join canonical latency with the validated local standard COCOeval table."""
+    rows = load_canonical(path)
+    with OFFICIAL_MAP_CSV.open(newline="", encoding="utf-8") as f:
+        maps = {r["name"]: float(r["map50_95"]) for r in csv.DictReader(f)}
+    if set(maps) != set(r["name"] for r in rows):
+        raise ValueError(f"official map table does not cover the canonical latency models: {OFFICIAL_MAP_CSV}")
+    for row in rows:
+        row["map"] = maps[row["name"]]
+    return rows
 
 
 def load_robust(path: str | Path) -> dict[str, dict]:
@@ -388,7 +401,7 @@ def plot_p2(canon_csv: str | Path, out: Path) -> Path:
     画错。图注改为"无模型被支配，图为三目标前沿的二维投影"。"""
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
-    rows = load_canonical(canon_csv)
+    rows = load_plot_canonical(canon_csv)
     # 2026-09-11：不再画被支配灰点，也不再连虚线前沿。
     # §3.4 的双条件支配规则下没有任何模型被支配（存活边 0 条），前沿即全集；
     # 此时若仍按延迟升序连一条线，经过 YOLOv8l 时会向下拐，读者第一眼看到的是
@@ -431,7 +444,7 @@ def plot_p2(canon_csv: str | Path, out: Path) -> Path:
     ax.get_xaxis().set_minor_formatter(mpl_ticker.NullFormatter())   # 只留次刻度线，不出标签
     ax.tick_params(axis="x", labelsize=8)
     ax.set_xlabel("End-to-end CPU latency (ms, log) · 16-thread i7-14650HX", fontsize=8.5)
-    ax.set_ylabel("Official mAP@50-95 (COCO val2017)", fontsize=9)
+    ax.set_ylabel("Unified COCOeval mAP@50-95 (COCO val2017)", fontsize=9)
     ax.grid(True, ls=":", alpha=0.4)
     # 图例：族色 / LAE top-1 / 点面积语义（v4 起删去"被支配灰点"与"前沿虚线"两项）
     handles = [
@@ -639,7 +652,7 @@ def plot_p4(canon_csv: str | Path, out: Path) -> Path:
     from matplotlib.lines import Line2D as _L2D
     from matplotlib.patches import Patch, Rectangle
 
-    rows = load_canonical(canon_csv)
+    rows = load_plot_canonical(canon_csv)
 
     # ---- (a) 秩稳健热图（宽区 240 点）----
     alphas = np.round(np.arange(0.05, 1.001, 0.05), 2).tolist()
